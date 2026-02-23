@@ -1,11 +1,11 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useRef } from 'react'
 import { Input, Modal, Toast, SafeArea, SwipeAction } from 'antd-mobile'
 import dayjs from 'dayjs'
 import { useApp } from '../context/AppContext'
 import { calculateDailyBudget } from '../utils/budget'
 import { parseTransaction } from '../services/aiService'
 import { supabase } from '../utils/supabase'
-import { ArrowRight, Trash2, Calendar, TrendingUp, DollarSign, ChevronDown, X as CloseIcon } from 'lucide-react'
+import { ArrowRight, Trash2, Calendar, TrendingUp, DollarSign, ChevronDown } from 'lucide-react'
 
 const HomePage = () => {
   const { monthlySettings, totalExpenses, remainingDays, transactions, loading, refresh } = useApp()
@@ -13,6 +13,7 @@ const HomePage = () => {
   const [parsing, setParsing] = useState(false)
   const [expandedDates, setExpandedDates] = useState([dayjs().format('YYYY-MM-DD')])
   const [detailTx, setDetailTx] = useState(null)
+  const inputRef = useRef(null)
 
   const dailyBudget = calculateDailyBudget(
     monthlySettings.income,
@@ -173,8 +174,13 @@ const HomePage = () => {
       </section>
 
       <div className="px-6 mt-12 sticky top-6 z-20">
-        <div className="input-bar rounded-[32px] border border-ios-border flex items-center p-2.5 pl-5 transition-all duration-500 shadow-2xl">
+        {/* 点击容器任意位置聚焦输入框 */}
+        <div
+          className="input-bar rounded-[32px] border border-ios-border flex items-center p-2.5 pl-5 transition-all duration-500 shadow-2xl"
+          onClick={() => inputRef.current?.focus()}
+        >
           <Input
+            ref={inputRef}
             placeholder="Or type to log..."
             className="flex-1 text-[17px] font-medium custom-input-caret ml-1"
             style={{ color: 'var(--input-bar-text)' }}
@@ -285,29 +291,27 @@ const HomePage = () => {
       
       <SafeArea position='bottom' />
 
-      {/* ── Transaction Detail Sheet ── */}
+      {/* ── Transaction Detail Modal (Centered) ── */}
       {detailTx && (
         <div
-          className="fixed inset-0 z-50 flex items-end"
+          className="fixed inset-0 z-50 flex items-center justify-center px-6"
+          style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
           onClick={() => setDetailTx(null)}
         >
           <div
-            className="w-full liquid-glass rounded-t-[32px] p-8 pb-10 animate-fluid"
+            className="w-full max-w-sm liquid-glass rounded-[32px] p-8 animate-fluid"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Handle bar */}
-            <div className="w-10 h-1 bg-ios-secondary/30 rounded-full mx-auto mb-6" />
-
             <div className="flex items-start justify-between mb-6">
               <div>
                 <span className="text-[10px] font-bold text-ios-secondary uppercase tracking-[0.2em]">金额</span>
-                <p className="text-4xl font-bold text-[#007aff] tracking-tight mt-1">¥{detailTx.amount}</p>
+                <p className="text-5xl font-bold text-[#007aff] tracking-tight mt-1">¥{detailTx.amount}</p>
               </div>
               <button
                 onClick={() => setDetailTx(null)}
-                className="w-9 h-9 rounded-full bg-ios-primary/5 flex items-center justify-center text-ios-secondary"
+                className="w-9 h-9 rounded-full bg-ios-primary/8 flex items-center justify-center text-ios-secondary hover:bg-ios-primary/15 transition-colors"
               >
-                <span className="text-lg leading-none">×</span>
+                <span className="text-xl leading-none font-light">×</span>
               </button>
             </div>
 
@@ -323,9 +327,9 @@ const HomePage = () => {
                 </div>
               )}
               {detailTx.original_text && (
-                <div>
+                <div className="bg-ios-primary/5 rounded-[18px] p-4">
                   <span className="text-[10px] font-bold text-ios-secondary uppercase tracking-[0.2em]">原始语音</span>
-                  <p className="text-sm text-ios-secondary mt-1 italic leading-relaxed">"{detailTx.original_text}"</p>
+                  <p className="text-sm text-ios-secondary mt-1.5 italic leading-relaxed">"{detailTx.original_text}"</p>
                 </div>
               )}
               <div>
@@ -338,7 +342,7 @@ const HomePage = () => {
 
             <button
               onClick={() => { handleDelete(detailTx.id); setDetailTx(null) }}
-              className="mt-8 w-full py-4 rounded-full bg-[#ff3b30]/10 text-[#ff3b30] font-bold text-sm uppercase tracking-widest active:scale-[0.98] transition-all"
+              className="mt-6 w-full py-4 rounded-full bg-[#ff3b30]/10 text-[#ff3b30] font-bold text-sm uppercase tracking-widest active:scale-[0.98] transition-all"
             >
               删除记录
             </button>

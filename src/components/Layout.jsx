@@ -75,13 +75,13 @@ const Layout = () => {
   // Close menu on nav
   useEffect(() => { setMenuOpen(false) }, [pathname])
 
-  // Default positions: voice ball top-right area, menu ball below it
+  // Voice ball: bottom-right, Menu ball: bottom-left — diagonal prevents overlap when menu expands
   const voice = useDraggableBall('ball-voice', {
     x: window.innerWidth - BALL - 20,
-    y: window.innerHeight - BALL * 2 - 56,
+    y: window.innerHeight - BALL - 24,
   })
   const menu = useDraggableBall('ball-menu', {
-    x: window.innerWidth - BALL - 20,
+    x: 20,
     y: window.innerHeight - BALL - 24,
   })
 
