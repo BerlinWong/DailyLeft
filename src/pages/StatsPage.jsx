@@ -7,7 +7,7 @@ import { BarChart3, Wallet } from 'lucide-react'
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#64748b', '#06b6d4']
 
 const StatsPage = () => {
-  const { transactions, loading, totalExpenses } = useApp()
+  const { transactions, loading, totalExpenses, monthlySettings } = useApp()
 
   const data = useMemo(() => {
     const expenses = transactions.filter(t => t.type === 'expense')
@@ -16,10 +16,15 @@ const StatsPage = () => {
       return acc
     }, {})
 
+    // Include manual offset from settings
+    if (monthlySettings.initial_spent > 0) {
+      grouped['Manual Offset'] = (grouped['Manual Offset'] || 0) + Number(monthlySettings.initial_spent)
+    }
+
     return Object.entries(grouped)
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value)
-  }, [transactions])
+  }, [transactions, monthlySettings.initial_spent])
 
   if (loading) return (
     <div className="p-10 space-y-8 animate-pulse bg-white min-h-screen">

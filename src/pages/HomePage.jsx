@@ -1,10 +1,10 @@
 import React, { useState } from 'react'
-import { Card, Input, Button, Modal, List, Tag, Toast, SafeArea } from 'antd-mobile'
+import { Card, Input, Button, Modal, List, Tag, Toast, SafeArea, SwipeAction } from 'antd-mobile'
 import { useApp } from '../context/AppContext'
 import { calculateDailyBudget } from '../utils/budget'
 import { parseTransaction } from '../services/aiService'
 import { supabase } from '../utils/supabase'
-import { Send, Plus, ReceiptText, Sparkles, TrendingUp } from 'lucide-react'
+import { Send, Plus, ReceiptText, Sparkles, TrendingUp, Trash2 } from 'lucide-react'
 
 const HomePage = () => {
   const { monthlySettings, totalExpenses, remainingDays, transactions, loading } = useApp()
@@ -73,6 +73,23 @@ const HomePage = () => {
     }
   }
 
+  const handleDelete = (id) => {
+    Modal.confirm({
+      content: 'Are you sure you want to delete this record?',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      danger: true,
+      onConfirm: async () => {
+        const { error } = await supabase.from('transactions').delete().eq('id', id)
+        if (error) {
+          Toast.show({ icon: 'fail', content: 'Delete failed' })
+        } else {
+          Toast.show({ icon: 'success', content: 'Deleted' })
+        }
+      },
+    })
+  }
+
   return (
     <div className="min-h-screen bg-[#fcfcfd] pb-24 animate-fade-in font-sans">
       <SafeArea position='top' />
@@ -98,7 +115,7 @@ const HomePage = () => {
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-white/80 backdrop-blur-md p-4 rounded-[24px] border border-white shadow-sm">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Month Spent</p>
-            <p className="text-lg font-black text-slate-800">¥{totalExpenses}</p>
+            <p className="text-lg font-black text-slate-800">¥{totalExpenses.toFixed(2)}</p>
           </div>
           <div className="bg-white/80 backdrop-blur-md p-4 rounded-[24px] border border-white shadow-sm">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Days Left</p>
@@ -136,24 +153,36 @@ const HomePage = () => {
         </div>
 
         <div className="space-y-3">
-          {transactions.slice(0, 5).map(t => (
-            <div 
-              key={t.id} 
-              className="bg-white p-4 rounded-[24px] shadow-sm border border-slate-50 flex items-center justify-between hover:border-blue-100 transition-colors"
+          {transactions.slice(0, 10).map(t => (
+            <SwipeAction
+              key={t.id}
+              rightActions={[
+                {
+                  key: 'delete',
+                  text: <div className="flex items-center justify-center h-full px-4"><Trash2 size={20} /></div>,
+                  color: 'danger',
+                  onClick: () => handleDelete(t.id),
+                },
+              ]}
+              className="rounded-[24px]"
             >
-              <div className="flex items-center gap-4">
-                <div className="bg-slate-100 p-3 rounded-2xl text-slate-500">
-                  <Plus size={20} />
+              <div 
+                className="bg-white p-4 rounded-[24px] shadow-sm border border-slate-50 flex items-center justify-between hover:border-blue-100 transition-colors"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="bg-slate-100 p-3 rounded-2xl text-slate-500">
+                    <Plus size={20} />
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-800 leading-tight mb-0.5">{t.description || t.category}</p>
+                    <p className="text-[10px] font-medium text-slate-400">{new Date(t.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {t.category}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-bold text-slate-800 leading-tight mb-0.5">{t.description || t.category}</p>
-                  <p className="text-[10px] font-medium text-slate-400">{new Date(t.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {t.category}</p>
+                <div className="text-right">
+                  <p className="font-black text-slate-900">- ¥{t.amount}</p>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="font-black text-slate-900">- ¥{t.amount}</p>
-              </div>
-            </div>
+            </SwipeAction>
           ))}
           
           {transactions.length === 0 && (
