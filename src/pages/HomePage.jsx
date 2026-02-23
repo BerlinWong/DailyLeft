@@ -1,20 +1,17 @@
-import React, { useState, useMemo, useRef } from 'react'
+import React, { useState, useMemo } from 'react'
 import { Input, Modal, Toast, SafeArea, SwipeAction } from 'antd-mobile'
 import dayjs from 'dayjs'
 import { useApp } from '../context/AppContext'
 import { calculateDailyBudget } from '../utils/budget'
 import { parseTransaction } from '../services/aiService'
 import { supabase } from '../utils/supabase'
-import { ArrowRight, Trash2, Calendar, TrendingUp, DollarSign, ChevronDown, Mic, MicOff } from 'lucide-react'
+import { ArrowRight, Trash2, Calendar, TrendingUp, DollarSign, ChevronDown } from 'lucide-react'
 
 const HomePage = () => {
   const { monthlySettings, totalExpenses, remainingDays, transactions, loading, refresh } = useApp()
   const [inputText, setInputText] = useState('')
   const [parsing, setParsing] = useState(false)
-  const [isListening, setIsListening] = useState(false)
   const [expandedDates, setExpandedDates] = useState([dayjs().format('YYYY-MM-DD')])
-  
-  const recognitionRef = useRef(null)
 
   const dailyBudget = calculateDailyBudget(
     monthlySettings.income,
@@ -38,36 +35,6 @@ const HomePage = () => {
     setExpandedDates(prev => 
       prev.includes(date) ? prev.filter(d => d !== date) : [...prev, date]
     )
-  }
-
-  const startListening = () => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-    if (!SpeechRecognition) {
-      Toast.show({ content: 'Speech recognition not supported' })
-      return
-    }
-
-    if (isListening) {
-      recognitionRef.current?.stop()
-      return
-    }
-
-    const recognition = new SpeechRecognition()
-    recognition.lang = 'zh-CN'
-    recognition.interimResults = false
-    recognition.continuous = false
-
-    recognition.onstart = () => setIsListening(true)
-    recognition.onend = () => setIsListening(false)
-    recognition.onerror = () => setIsListening(false)
-
-    recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript
-      setInputText(transcript)
-    }
-
-    recognitionRef.current = recognition
-    recognition.start()
   }
 
   const handleSend = async () => {
@@ -207,22 +174,18 @@ const HomePage = () => {
       <div className="px-6 mt-12 sticky top-6 z-20">
         <div className="input-bar rounded-[32px] border border-ios-border flex items-center p-2.5 pl-5 transition-all duration-500 shadow-2xl">
           <Input
-            placeholder="Log your spend..."
+            placeholder="Or type to log..."
             className="flex-1 text-[17px] font-medium custom-input-caret ml-1"
             style={{ color: 'var(--input-bar-text)' }}
             value={inputText}
             onChange={setInputText}
             onEnterPress={handleSend}
           />
-          <div className="flex items-center gap-3 pr-0.5">
-            <button 
-              onClick={startListening}
-              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${isListening ? 'text-[#ff3b30] animate-pulse' : 'text-ios-secondary hover:text-ios-primary'}`}
-            >
-              {isListening ? <MicOff size={24} strokeWidth={2.5} /> : <Mic size={24} strokeWidth={2.5} />}
-            </button>
-            <button 
-              className={`w-11 h-11 rounded-full flex items-center justify-center transition-all duration-500 ${parsing ? 'opacity-50 scale-90' : ''} ${inputText ? 'input-bar-btn-active shadow-xl' : 'input-bar-btn-idle'}`}
+          <div className="flex items-center gap-2 pr-0.5">
+            <button
+              className={`w-11 h-11 rounded-full flex items-center justify-center transition-all duration-500
+                ${parsing ? 'opacity-50 scale-90' : ''}
+                ${inputText ? 'input-bar-btn-active shadow-lg' : 'input-bar-btn-idle'}`}
               onClick={handleSend}
               disabled={parsing}
             >

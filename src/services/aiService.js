@@ -25,13 +25,13 @@ Return ONLY a strict JSON object:
 - date: string (format: YYYY-MM-DD HH:mm:ss)
 
 Rules:
-1. The 'Current Local Time' provided is the user's actual time. Use it as the base for relative dates (e.g., 'today', 'yesterday').
-2. DEFAULT TIMES for keywords:
-   - 'Breakfast' (早饭/早餐) -> 08:30:00
-   - 'Lunch' (午饭/午餐/中午) -> 12:00:00
-   - 'Dinner' (晚饭/晚餐/晚上) -> 19:00:00
-3. If user says 'Midday 12:00', use 12:00:00 on the calculated date.
-4. Output 'date' in the local timezone format 'YYYY-MM-DD HH:mm:ss'. Do NOT use UTC unless specified.
+1. Use 'Current Local Time' as the base. Resolve relative dates ('today', 'yesterday', '昨天') from it.
+2. TIME DEFAULTS — only override the time when the user explicitly mentions a meal period:
+   - Morning / 早 (早饭/早餐/早上) → 08:00:00
+   - Noon / 午 (午饭/午餐/中午) → 12:00:00
+   - Evening / 晚 (晚饭/晚餐/晚上) → 19:00:00
+3. If no time or meal period is mentioned, use the EXACT time from 'Current Local Time'.
+4. Output 'date' in local timezone as 'YYYY-MM-DD HH:mm:ss'. Never use UTC.
 5. No markdown, no explanation.`
 
   try {
