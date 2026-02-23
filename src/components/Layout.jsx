@@ -1,215 +1,221 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useLocation, Outlet } from 'react-router-dom'
-import { Home, BarChart2, Settings, Mic, X } from 'lucide-react'
+import { Home, BarChart2, Settings, Mic, MicOff, X, Menu } from 'lucide-react'
 import { useVoiceSubmit } from '../hooks/useVoiceSubmit'
 
 const tabs = [
-  { key: '/',         title: 'Today',     icon: <Home size={22} /> },
-  { key: '/stats',    title: 'Analytics', icon: <BarChart2 size={22} /> },
-  { key: '/settings', title: 'System',    icon: <Settings size={22} /> },
+  { key: '/',         title: 'Today',     icon: <Home size={20} /> },
+  { key: '/stats',    title: 'Analytics', icon: <BarChart2 size={20} /> },
+  { key: '/settings', title: 'System',    icon: <Settings size={20} /> },
 ]
 
-const LONG_PRESS_MS = 250 // threshold to distinguish tap vs long-press
+const BALL  = 52
+const THRESH = 8
+
+const loadPos = (key, def) => {
+  try {
+    const s = localStorage.getItem(key)
+    if (s) return JSON.parse(s)
+  } catch {}
+  return def
+}
+
+/** Shared logic for a draggable fixed ball. Returns pos + pointer handlers. */
+const useDraggableBall = (storageKey, defaultPos) => {
+  const [pos, setPos]   = useState(() => loadPos(storageKey, defaultPos))
+  const posRef          = useRef(pos)
+  useEffect(() => { posRef.current = pos }, [pos])
+
+  const drag = useRef({ on: false, moved: false, cx0: 0, cy0: 0, bx0: 0, by0: 0 })
+
+  const onDown = useCallback((e) => {
+    e.preventDefault()
+    e.currentTarget.setPointerCapture(e.pointerId)
+    drag.current = { on: true, moved: false, cx0: e.clientX, cy0: e.clientY, bx0: posRef.current.x, by0: posRef.current.y }
+  }, [])
+
+  const onMove = useCallback((e) => {
+    if (!drag.current.on) return
+    const dx = e.clientX - drag.current.cx0
+    const dy = e.clientY - drag.current.cy0
+    if (!drag.current.moved && (Math.abs(dx) > THRESH || Math.abs(dy) > THRESH)) drag.current.moved = true
+    if (drag.current.moved) {
+      setPos({
+        x: Math.max(8, Math.min(window.innerWidth  - BALL - 8, drag.current.bx0 + dx)),
+        y: Math.max(8, Math.min(window.innerHeight - BALL - 8, drag.current.by0 + dy)),
+      })
+    }
+  }, [])
+
+  // Returns whether this pointer-up was a tap (not a drag)
+  const onUp = useCallback((e) => {
+    drag.current.on = false
+    const wasDrag = drag.current.moved
+    if (wasDrag) {
+      const snapX = posRef.current.x < window.innerWidth / 2 - BALL / 2
+        ? 16 : window.innerWidth - BALL - 16
+      const snapped = { x: snapX, y: posRef.current.y }
+      setPos(snapped)
+      localStorage.setItem(storageKey, JSON.stringify(snapped))
+    }
+    return !wasDrag // true = was a tap
+  }, [storageKey])
+
+  return { pos, onDown, onMove, onUp }
+}
+
+// ─────────────────────────────────────────────
 
 const Layout = () => {
-  const navigate = useNavigate()
-  const { pathname } = useLocation()
-  const [isOpen, setIsOpen] = useState(false)
-  const { isListening, isProcessing, startListening, stopAndSubmit } = useVoiceSubmit()
+  const navigate      = useNavigate()
+  const { pathname }  = useLocation()
+  const [menuOpen, setMenuOpen] = useState(false)
+  const { isListening, isProcessing, toggleListening } = useVoiceSubmit()
 
-  // Long-press detection for toggle button
-  const longPressTimerRef = useRef(null)
-  const isLongPressRef    = useRef(false)
+  // Close menu on nav
+  useEffect(() => { setMenuOpen(false) }, [pathname])
 
-  // Auto-close when route changes
-  useEffect(() => { setIsOpen(false) }, [pathname])
+  // Default positions: voice ball top-right area, menu ball below it
+  const voice = useDraggableBall('ball-voice', {
+    x: window.innerWidth - BALL - 20,
+    y: window.innerHeight - BALL * 2 - 56,
+  })
+  const menu = useDraggableBall('ball-menu', {
+    x: window.innerWidth - BALL - 20,
+    y: window.innerHeight - BALL - 24,
+  })
 
-  // ── Mic button inside panel (long press) ──
-  const preventCtxMenu = useCallback((e) => e.preventDefault(), [])
+  const noCtx = useCallback((e) => e.preventDefault(), [])
 
-  const handleMicPointerDown = useCallback((e) => {
-    e.preventDefault()
-    startListening()
-  }, [startListening])
+  const handleVoiceUp = useCallback((e) => {
+    const isTap = voice.onUp(e)
+    if (isTap && !isProcessing) toggleListening()
+  }, [voice, isProcessing, toggleListening])
 
-  const handleMicPointerUp = useCallback((e) => {
-    e.preventDefault()
-    stopAndSubmit()
-  }, [stopAndSubmit])
+  const handleMenuUp = useCallback((e) => {
+    const isTap = menu.onUp(e)
+    if (isTap) setMenuOpen((p) => !p)
+  }, [menu])
 
-  const handleMicPointerLeave = useCallback(() => {
-    if (isListening) stopAndSubmit()
-  }, [isListening, stopAndSubmit])
-
-  // ── Toggle button: short-tap = open/close, long-press = voice ──
-  const handleTogglePointerDown = useCallback((e) => {
-    isLongPressRef.current = false
-    longPressTimerRef.current = setTimeout(() => {
-      isLongPressRef.current = true
-      setIsOpen(false) // close panel while recording
-      startListening()
-    }, LONG_PRESS_MS)
-  }, [startListening])
-
-  const handleTogglePointerUp = useCallback((e) => {
-    clearTimeout(longPressTimerRef.current)
-    if (isLongPressRef.current) {
-      // Was a long-press — stop and submit
-      stopAndSubmit()
-    } else {
-      // Was a short tap — toggle nav
-      setIsOpen((p) => !p)
-    }
-  }, [stopAndSubmit])
-
-  const handleTogglePointerLeave = useCallback(() => {
-    clearTimeout(longPressTimerRef.current)
-    if (isLongPressRef.current && isListening) {
-      stopAndSubmit()
-    }
-  }, [isListening, stopAndSubmit])
-
-  const currentTab = tabs.find((t) => t.key === pathname) || tabs[0]
-  const navTabs = [...tabs].reverse()
-
-  // Determine toggle button visual state
-  const toggleIsRecording = isListening && isLongPressRef.current
+  const menuOnRight = menu.pos.x >= window.innerWidth / 2 - BALL
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
-      <div className="flex-1 overflow-y-auto">
+
+      {/* Scrollable main content — min-h-0 critical for iOS Safari */}
+      <div className="flex-1 overflow-y-auto min-h-0">
         <Outlet />
       </div>
 
-      {/* Backdrop */}
-      <div
-        onClick={() => setIsOpen(false)}
-        className={`fixed inset-0 z-40 transition-all duration-300
-          ${isOpen
-            ? 'bg-black/10 backdrop-blur-[1px] pointer-events-auto'
-            : 'pointer-events-none opacity-0'}`}
-      />
-
-      {/* Floating Nav — bottom-right */}
-      <div className="fixed bottom-10 right-6 z-50 flex flex-col items-end gap-3">
-
-        {/* ── Expanded Panel ── */}
+      {/* Backdrop closes menu (conditional render — no invisible fixed layer when closed) */}
+      {menuOpen && (
         <div
-          aria-hidden={!isOpen}
-          className={`flex flex-col items-end gap-3 transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]
-            ${isOpen
-              ? 'opacity-100 translate-y-0 pointer-events-auto'
-              : 'opacity-0 translate-y-6 pointer-events-none'}`}
-        >
-          {/* Mic button (in panel) */}
-          <div className="flex items-center gap-3">
-            {isListening && (
-              <span className="text-[10px] font-black text-[#ff3b30] uppercase tracking-[0.2em] whitespace-nowrap animate-pulse">
-                Listening…
-              </span>
-            )}
-            <div className="relative">
-              {isListening && (
-                <>
-                  <div className="absolute inset-0 rounded-full bg-[#ff3b30]/25 animate-ping" />
-                  <div className="absolute -inset-2 rounded-full bg-[#ff3b30]/10 animate-ping [animation-delay:200ms]" />
-                </>
-              )}
-              <button
-                onPointerDown={handleMicPointerDown}
-                onPointerUp={handleMicPointerUp}
-                onPointerLeave={handleMicPointerLeave}
-                onContextMenu={preventCtxMenu}
-                disabled={isProcessing}
-                style={{ touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}
-                className={`relative w-14 h-14 rounded-full flex items-center justify-center
-                  shadow-[0_8px_24px_rgba(0,0,0,0.2)] transition-all duration-300 select-none
-                  ${isListening   ? 'bg-[#ff3b30] scale-110 shadow-[0_8px_24px_rgba(255,59,48,0.4)]'
-                  : isProcessing  ? 'bg-[#8e8e93] scale-95 opacity-70'
-                  :                  'bg-[#007aff] hover:scale-105 active:scale-95'}`}
-              >
-                {isProcessing ? (
-                  <div className="w-5 h-5 border-[2.5px] border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <Mic size={26} className="text-white pointer-events-none" strokeWidth={isListening ? 3 : 2.5} />
-                )}
-              </button>
-            </div>
-          </div>
+          onClick={() => setMenuOpen(false)}
+          className="fixed inset-0 z-40 bg-black/10 backdrop-blur-[1px]"
+        />
+      )}
 
-          {/* Divider */}
-          <div className="w-8 h-px bg-ios-secondary/20 mr-3" />
-
-          {/* Tab items with stagger */}
-          {navTabs.map((tab, i) => {
-            const active = pathname === tab.key
-            return (
-              <div
-                key={tab.key}
-                className="flex items-center gap-3"
-                style={{
-                  transitionDelay: isOpen ? `${i * 45}ms` : '0ms',
-                  transform: isOpen ? 'translateY(0)' : 'translateY(14px)',
-                  opacity: isOpen ? 1 : 0,
-                  transition: 'transform 0.45s cubic-bezier(0.23,1,0.32,1), opacity 0.35s ease',
-                }}
-              >
-                <span className={`text-[11px] font-black uppercase tracking-widest whitespace-nowrap transition-colors duration-300
-                  ${active ? 'text-[#007aff]' : 'text-ios-secondary'}`}>
-                  {tab.title}
-                </span>
-                <button
-                  onClick={() => navigate(tab.key)}
-                  className={`w-14 h-14 rounded-full flex items-center justify-center
-                    shadow-md active:scale-90 transition-all duration-200
-                    ${active
-                      ? 'bg-[#007aff] text-white shadow-[0_6px_20px_rgba(0,122,255,0.35)]'
-                      : 'liquid-glass text-ios-secondary hover:text-ios-primary'}`}
-                >
-                  {React.cloneElement(tab.icon, { size: 22, strokeWidth: active ? 2.5 : 2 })}
-                </button>
-              </div>
-            )
-          })}
-        </div>
-
-        {/* ── Toggle Button (tap = open/close | long-press = voice) ── */}
-        <div className="relative">
-          {/* Recording ripple on toggle */}
-          {toggleIsRecording && (
-            <>
-              <div className="absolute inset-0 rounded-full bg-[#ff3b30]/25 animate-ping" />
-              <div className="absolute -inset-2 rounded-full bg-[#ff3b30]/10 animate-ping [animation-delay:200ms]" />
-            </>
-          )}
-          <button
-            onPointerDown={handleTogglePointerDown}
-            onPointerUp={handleTogglePointerUp}
-            onPointerLeave={handleTogglePointerLeave}
-            onContextMenu={preventCtxMenu}
-            style={{ touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}
-            className={`relative w-14 h-14 rounded-full flex items-center justify-center
-              shadow-[0_8px_32px_rgba(0,0,0,0.18)] transition-all duration-500 active:scale-90 select-none
-              ${toggleIsRecording
-                ? 'bg-[#ff3b30] scale-110 shadow-[0_8px_24px_rgba(255,59,48,0.4)]'
-                : isOpen
-                  ? 'liquid-glass text-ios-primary'
-                  : 'bg-[#007aff] text-white shadow-[0_8px_24px_rgba(0,122,255,0.35)]'}`}
-          >
-            {isOpen && !toggleIsRecording
-              ? <X size={22} strokeWidth={2.5} className="text-ios-primary" />
-              : toggleIsRecording
-                ? <Mic size={24} className="text-white pointer-events-none" strokeWidth={3} />
-                : React.cloneElement(currentTab.icon, { size: 22, strokeWidth: 2.5, className: 'text-white' })}
-          </button>
-        </div>
-
-        {/* Long-press hint label under toggle */}
-        {toggleIsRecording && (
-          <span className="text-[10px] font-black text-[#ff3b30] uppercase tracking-[0.2em] whitespace-nowrap -mt-1 animate-pulse">
-            Listening…
-          </span>
+      {/* ── Voice Ball ── */}
+      <div
+        className="fixed z-50"
+        style={{ left: voice.pos.x, top: voice.pos.y, width: BALL, height: BALL }}
+      >
+        {/* Ripple when active */}
+        {isListening && (
+          <>
+            <div className="absolute inset-0 rounded-full bg-[#ff3b30]/30 animate-ping pointer-events-none" />
+            <div className="absolute -inset-3 rounded-full bg-[#ff3b30]/10 animate-ping [animation-delay:220ms] pointer-events-none" />
+          </>
         )}
+
+        <button
+          onPointerDown={voice.onDown}
+          onPointerMove={voice.onMove}
+          onPointerUp={handleVoiceUp}
+          onPointerCancel={voice.onUp}
+          onContextMenu={noCtx}
+          disabled={isProcessing}
+          style={{ touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none', cursor: 'grab' }}
+          className={`relative w-full h-full rounded-full flex items-center justify-center select-none
+            transition-all duration-300 shadow-[0_6px_24px_rgba(0,0,0,0.2)]
+            ${isListening
+              ? 'bg-[#ff3b30] shadow-[0_6px_24px_rgba(255,59,48,0.4)] scale-110'
+              : isProcessing
+                ? 'bg-[#8e8e93] opacity-70'
+                : 'bg-[#007aff] shadow-[0_6px_24px_rgba(0,122,255,0.35)]'}`}
+        >
+          {isProcessing
+            ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            : isListening
+              ? <MicOff size={22} className="text-white" strokeWidth={2.5} />
+              : <Mic    size={22} className="text-white" strokeWidth={2.5} />}
+        </button>
+
+        {isListening && (
+          <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 whitespace-nowrap pointer-events-none">
+            <span className="text-[9px] font-black text-[#ff3b30] uppercase tracking-[0.2em] animate-pulse">
+              录音中…
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* ── Menu Ball ── */}
+      <div
+        className="fixed z-50"
+        style={{ left: menu.pos.x, top: menu.pos.y, width: BALL, height: BALL }}
+      >
+        {/* Expanded nav panel — above ball */}
+        {menuOpen && (
+          <div
+            className={`absolute bottom-[calc(100%+12px)] flex flex-col gap-2.5 animate-fluid
+              ${menuOnRight ? 'right-0 items-end' : 'left-0 items-start'}`}
+          >
+            {[...tabs].reverse().map((tab) => {
+              const active = pathname === tab.key
+              return (
+                <div
+                  key={tab.key}
+                  className={`flex items-center gap-3 ${menuOnRight ? 'flex-row' : 'flex-row-reverse'}`}
+                >
+                  <span className={`text-[11px] font-black uppercase tracking-widest whitespace-nowrap
+                    ${active ? 'text-[#007aff]' : 'text-ios-secondary'}`}>
+                    {tab.title}
+                  </span>
+                  <button
+                    onClick={() => navigate(tab.key)}
+                    className={`w-12 h-12 rounded-full flex items-center justify-center
+                      shadow-md active:scale-90 transition-all duration-200
+                      ${active
+                        ? 'bg-[#007aff] text-white shadow-[0_6px_20px_rgba(0,122,255,0.35)]'
+                        : 'liquid-glass text-ios-secondary'}`}
+                  >
+                    {React.cloneElement(tab.icon, { strokeWidth: active ? 2.5 : 2 })}
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        <button
+          onPointerDown={menu.onDown}
+          onPointerMove={menu.onMove}
+          onPointerUp={handleMenuUp}
+          onPointerCancel={menu.onUp}
+          onContextMenu={noCtx}
+          style={{ touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none', cursor: 'grab' }}
+          className={`w-full h-full rounded-full flex items-center justify-center select-none
+            transition-all duration-500 shadow-[0_6px_24px_rgba(0,0,0,0.15)]
+            ${menuOpen ? 'liquid-glass' : 'bg-white/90 dark:bg-[#2c2c2e]'}`}
+        >
+          {menuOpen
+            ? <X    size={20} strokeWidth={2.5} className="text-ios-primary" />
+            : React.cloneElement(
+                tabs.find(t => t.key === pathname)?.icon || tabs[0].icon,
+                { strokeWidth: 2.5, className: 'text-ios-primary dark:text-white' }
+              )}
+        </button>
       </div>
     </div>
   )

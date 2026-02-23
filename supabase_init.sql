@@ -1,10 +1,11 @@
--- Transactions memory table
+-- Transactions table
 create table transactions (
   id bigint primary key generated always as identity,
   amount numeric not null,
   category text not null check (category in ('Food', 'Transport', 'Shopping', 'Housing', 'Entertainment', 'Medical', 'Salary', 'Other')),
   type text not null check (type in ('expense', 'income')),
   description text,
+  original_text text,      -- raw voice transcript or typed input
   date timestamptz default now()
 );
 
@@ -13,9 +14,13 @@ create table monthly_settings (
   id bigint primary key generated always as identity,
   month text not null unique, -- format 'YYYY-MM'
   income numeric default 0,
-  savings_goal numeric default 0
+  savings_goal numeric default 0,
+  initial_spent numeric default 0
 );
 
--- Basic indexes for performance
+-- Basic indexes
 create index idx_transactions_date on transactions(date);
 create index idx_monthly_settings_month on monthly_settings(month);
+
+-- Migration: add original_text if upgrading from older schema
+-- alter table transactions add column if not exists original_text text;

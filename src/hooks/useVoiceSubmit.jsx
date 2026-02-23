@@ -1,145 +1,124 @@
 import { useRef, useState, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Modal, Toast } from 'antd-mobile'
 import { parseTransaction } from '../services/aiService'
 import { supabase } from '../utils/supabase'
 import { useApp } from '../context/AppContext'
 
-/**
- * Encapsulates the press-and-hold voice → AI parse → confirm → save flow.
- */
 export const useVoiceSubmit = () => {
   const { refresh } = useApp()
-  const [isListening, setIsListening] = useState(false)
+  const navigate = useNavigate()
+  const [isListening, setIsListening]   = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
-  const recognitionRef = useRef(null)
-  const transcriptRef = useRef('')
-  const releaseCalledRef = useRef(false)
+  const recognitionRef  = useRef(null)
+  const transcriptRef   = useRef('')
 
   const startListening = useCallback(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
     if (!SpeechRecognition) {
-      Toast.show({ content: 'Speech recognition not supported on this browser' })
+      Toast.show({ content: '当前浏览器不支持语音识别' })
       return
     }
-
-    releaseCalledRef.current = false
     transcriptRef.current = ''
 
-    const recognition = new SpeechRecognition()
-    recognition.lang = 'zh-CN'
-    recognition.interimResults = true
-    recognition.continuous = true
+    const rec = new SpeechRecognition()
+    rec.lang = 'zh-CN'
+    rec.interimResults = true
+    rec.continuous = true
 
-    recognition.onstart = () => setIsListening(true)
-
-    recognition.onresult = (event) => {
-      const transcript = Array.from(event.results)
-        .map((r) => r[0].transcript)
-        .join('')
-      transcriptRef.current = transcript
-    }
-
-    recognition.onerror = (e) => {
-      // 'aborted' is expected when we call stop() ourselves
-      if (e.error !== 'aborted') {
-        Toast.show({ content: `Mic error: ${e.error}` })
-      }
+    rec.onstart  = () => setIsListening(true)
+    rec.onerror  = (e) => {
+      if (e.error !== 'aborted') Toast.show({ content: `麦克风: ${e.error}` })
       setIsListening(false)
     }
-
-    recognition.onend = () => {
-      setIsListening(false)
-      // If the recognition ended by itself (silence timeout) before user released,
-      // still trigger the submit if we have a transcript.
-      if (!releaseCalledRef.current && transcriptRef.current.trim()) {
-        handleSubmit()
-      }
+    rec.onresult = (e) => {
+      transcriptRef.current = Array.from(e.results).map((r) => r[0].transcript).join('')
     }
+    rec.onend = () => setIsListening(false)
 
-    recognitionRef.current = recognition
-    recognition.start()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    recognitionRef.current = rec
+    rec.start()
+  }, [])
 
-  const handleSubmit = useCallback(async () => {
+  const stopAndSubmit = useCallback(async () => {
+    recognitionRef.current?.stop()
+    setIsListening(false)
+
+    // Give browser a moment to fire the last onresult before we read it
+    await new Promise((r) => setTimeout(r, 200))
+
     const text = transcriptRef.current.trim()
     if (!text) {
-      Toast.show({ content: 'Nothing captured — try again', icon: 'fail' })
+      Toast.show({ content: '没有听到内容，再试试 🎤' })
       return
     }
 
     setIsProcessing(true)
-    const toast = Toast.show({
-      icon: 'loading',
-      content: 'Processing...',
-      duration: 0,
-      maskClickable: false,
-    })
+    const toast = Toast.show({ icon: 'loading', content: '解析中…', duration: 0, maskClickable: false })
 
     try {
       const parsed = await parseTransaction(text)
       toast.close()
 
+      if (!parsed.amount || parsed.amount <= 0) {
+        Toast.show({ content: '🤔 没找到金额，试试「外卖花了35」', duration: 3000 })
+        return
+      }
+
       Modal.confirm({
-        title: <span className="text-ios-primary font-bold">Commit Transaction?</span>,
+        title: <span className="text-ios-primary font-bold">确认记账？</span>,
         content: (
           <div className="py-4">
-            <div className="liquid-glass p-6 rounded-[28px] shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-[#007aff]/10 rounded-full blur-2xl -mr-8 -mt-8" />
+            <div className="liquid-glass p-6 rounded-[28px] relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-[#007aff]/10 rounded-full blur-2xl -mr-6 -mt-6" />
               <div className="flex flex-col gap-1 relative z-10">
-                <span className="text-[10px] font-bold text-ios-secondary uppercase tracking-[0.2em]">
-                  Validated Amount
-                </span>
-                <span className="text-4xl font-bold text-[#007aff] tracking-tight">
-                  ¥{parsed.amount}
-                </span>
+                <span className="text-[10px] font-bold text-ios-secondary uppercase tracking-[0.2em]">金额</span>
+                <span className="text-4xl font-bold text-[#007aff] tracking-tight">¥{parsed.amount}</span>
               </div>
-              <div className="mt-6 flex flex-col gap-1 relative z-10">
-                <span className="text-[10px] font-bold text-ios-secondary uppercase tracking-[0.2em]">
-                  Context
-                </span>
-                <span className="text-lg font-medium text-ios-primary/80 leading-snug">
-                  {parsed.description || parsed.category}
-                </span>
+              <div className="mt-5 flex flex-col gap-1 relative z-10">
+                <span className="text-[10px] font-bold text-ios-secondary uppercase tracking-[0.2em]">分类 / 描述</span>
+                <span className="text-base font-medium text-ios-primary/80">{parsed.description || parsed.category}</span>
               </div>
               <div className="mt-4 relative z-10">
-                <span className="text-[10px] font-bold text-ios-secondary uppercase tracking-[0.2em]">
-                  Original
-                </span>
+                <span className="text-[10px] font-bold text-ios-secondary uppercase tracking-[0.2em]">原始语音</span>
                 <p className="text-sm text-ios-secondary mt-1 italic">"{text}"</p>
               </div>
             </div>
           </div>
         ),
-        confirmText: <span className="font-bold">Save</span>,
-        cancelText: 'Cancel',
+        confirmText: <span className="font-bold">保存</span>,
+        cancelText: '取消',
         onConfirm: async () => {
           const { error } = await supabase.from('transactions').insert([{
             amount: parsed.amount,
             category: parsed.category,
             description: parsed.description,
+            original_text: text,
             type: 'expense',
             date: parsed.date,
           }])
           if (error) throw error
-          Toast.show({ content: 'Record Synced', icon: 'success' })
+          Toast.show({ content: '已记录 ✓', icon: 'success' })
           refresh()
+          navigate('/')
         },
       })
     } catch {
       toast.close()
-      Toast.show({ content: 'Parse failed — try again', icon: 'fail' })
+      Toast.show({ content: '解析失败，再试一次', icon: 'fail' })
     } finally {
       setIsProcessing(false)
     }
-  }, [refresh])
+  }, [refresh, navigate])
 
-  const stopAndSubmit = useCallback(() => {
-    releaseCalledRef.current = true
-    recognitionRef.current?.stop()
-    setIsListening(false)
-    // Small delay to let the onresult fire before we read transcriptRef
-    setTimeout(() => handleSubmit(), 150)
-  }, [handleSubmit])
+  /** Single-tap toggle: first tap = start, second tap = stop + submit */
+  const toggleListening = useCallback(() => {
+    if (isListening) {
+      stopAndSubmit()
+    } else {
+      startListening()
+    }
+  }, [isListening, startListening, stopAndSubmit])
 
-  return { isListening, isProcessing, startListening, stopAndSubmit }
+  return { isListening, isProcessing, toggleListening }
 }

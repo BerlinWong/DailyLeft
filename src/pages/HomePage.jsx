@@ -5,13 +5,14 @@ import { useApp } from '../context/AppContext'
 import { calculateDailyBudget } from '../utils/budget'
 import { parseTransaction } from '../services/aiService'
 import { supabase } from '../utils/supabase'
-import { ArrowRight, Trash2, Calendar, TrendingUp, DollarSign, ChevronDown } from 'lucide-react'
+import { ArrowRight, Trash2, Calendar, TrendingUp, DollarSign, ChevronDown, X as CloseIcon } from 'lucide-react'
 
 const HomePage = () => {
   const { monthlySettings, totalExpenses, remainingDays, transactions, loading, refresh } = useApp()
   const [inputText, setInputText] = useState('')
   const [parsing, setParsing] = useState(false)
   const [expandedDates, setExpandedDates] = useState([dayjs().format('YYYY-MM-DD')])
+  const [detailTx, setDetailTx] = useState(null)
 
   const dailyBudget = calculateDailyBudget(
     monthlySettings.income,
@@ -237,21 +238,22 @@ const HomePage = () => {
                     {items.map(t => (
                       <SwipeAction
                         key={t.id}
-                        rightActions={[
-                          {
-                            key: 'delete',
-                            text: (
-                              <div className="flex items-center justify-center h-full px-2">
-                                <div className="flex items-center justify-center w-14 h-14 bg-[#ff3b30] text-white rounded-full shadow-lg border border-white/20">
-                                  <Trash2 size={24} strokeWidth={2.5} />
-                                </div>
+                        rightActions={[{
+                          key: 'delete',
+                          text: (
+                            <div className="flex items-center justify-center h-full px-2">
+                              <div className="flex items-center justify-center w-14 h-14 bg-[#ff3b30] text-white rounded-full shadow-lg border border-white/20">
+                                <Trash2 size={24} strokeWidth={2.5} />
                               </div>
-                            ),
-                            onClick: () => handleDelete(t.id),
-                          }
-                        ]}
+                            </div>
+                          ),
+                          onClick: () => handleDelete(t.id),
+                        }]}
                       >
-                        <div className="liquid-glass rounded-[24px] p-5 flex items-center justify-between active:scale-[0.98] transition-all duration-200">
+                        <div
+                          onClick={() => setDetailTx(t)}
+                          className="liquid-glass rounded-[24px] p-5 flex items-center justify-between active:scale-[0.98] transition-all duration-200 cursor-pointer"
+                        >
                           <div className="flex items-center gap-4">
                             <div className="w-12 h-12 bg-ios-primary/5 rounded-2xl flex items-center justify-center text-ios-secondary shadow-sm border border-ios-border">
                               <span className="text-xs font-black uppercase tracking-tighter">{t.category[0]}</span>
@@ -272,6 +274,7 @@ const HomePage = () => {
                         </div>
                       </SwipeAction>
                     ))}
+
                   </div>
                 </div>
               </div>
@@ -281,6 +284,67 @@ const HomePage = () => {
       </section>
       
       <SafeArea position='bottom' />
+
+      {/* ── Transaction Detail Sheet ── */}
+      {detailTx && (
+        <div
+          className="fixed inset-0 z-50 flex items-end"
+          onClick={() => setDetailTx(null)}
+        >
+          <div
+            className="w-full liquid-glass rounded-t-[32px] p-8 pb-10 animate-fluid"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Handle bar */}
+            <div className="w-10 h-1 bg-ios-secondary/30 rounded-full mx-auto mb-6" />
+
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <span className="text-[10px] font-bold text-ios-secondary uppercase tracking-[0.2em]">金额</span>
+                <p className="text-4xl font-bold text-[#007aff] tracking-tight mt-1">¥{detailTx.amount}</p>
+              </div>
+              <button
+                onClick={() => setDetailTx(null)}
+                className="w-9 h-9 rounded-full bg-ios-primary/5 flex items-center justify-center text-ios-secondary"
+              >
+                <span className="text-lg leading-none">×</span>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <span className="text-[10px] font-bold text-ios-secondary uppercase tracking-[0.2em]">分类</span>
+                <p className="text-base font-semibold text-ios-primary mt-1">{detailTx.category}</p>
+              </div>
+              {detailTx.description && (
+                <div>
+                  <span className="text-[10px] font-bold text-ios-secondary uppercase tracking-[0.2em]">描述</span>
+                  <p className="text-base font-medium text-ios-primary/80 mt-1">{detailTx.description}</p>
+                </div>
+              )}
+              {detailTx.original_text && (
+                <div>
+                  <span className="text-[10px] font-bold text-ios-secondary uppercase tracking-[0.2em]">原始语音</span>
+                  <p className="text-sm text-ios-secondary mt-1 italic leading-relaxed">"{detailTx.original_text}"</p>
+                </div>
+              )}
+              <div>
+                <span className="text-[10px] font-bold text-ios-secondary uppercase tracking-[0.2em]">记录时间</span>
+                <p className="text-sm font-medium text-ios-secondary mt-1">
+                  {dayjs(detailTx.date).format('YYYY年MM月DD日 HH:mm')}
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => { handleDelete(detailTx.id); setDetailTx(null) }}
+              className="mt-8 w-full py-4 rounded-full bg-[#ff3b30]/10 text-[#ff3b30] font-bold text-sm uppercase tracking-widest active:scale-[0.98] transition-all"
+            >
+              删除记录
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
