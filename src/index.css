@@ -2,92 +2,237 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Google Sans fallback */
-@import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
+/* ===================== Design Tokens ===================== */
 :root {
-  --md-sys-color-primary: #1a73e8;
-  --md-sys-color-on-primary: #ffffff;
-  --md-sys-color-surface: #f8f9fa;
-  --md-sys-color-on-surface: #202124;
-  --md-sys-color-surface-variant: #eeeeee;
-  --md-sys-color-outline: #dadce0;
-  --md-sys-color-secondary-container: #e8f0fe;
-  --md-sys-color-on-secondary-container: #1967d2;
-  
-  font-family: 'Google Sans', 'Roboto', system-ui, -apple-system, sans-serif;
-  background-color: var(--md-sys-color-surface);
-  color: var(--md-sys-color-on-surface);
+  --ios-blue: #007aff;
+  --ios-bg: #f2f2f7;
+  --glass-bg: rgba(255, 255, 255, 0.75);
+  --text-primary: #000000;
+  --text-secondary: rgba(0, 0, 0, 0.4);
+  --card-bg: rgba(255, 255, 255, 0.65);
+  --border-color: rgba(0, 0, 0, 0.08);
+
+  /* Input bar (sticky search) */
+  --input-bar-bg: #e3e3e8;
+  --input-bar-text: #000000;
+  --input-bar-placeholder: rgba(0, 0, 0, 0.28);
+  --input-bar-btn-idle: rgba(0, 0, 0, 0.08);
+  --input-bar-btn-idle-icon: rgba(0, 0, 0, 0.3);
+  --input-bar-btn-active: rgba(0, 0, 0, 0.18);
+  --input-bar-btn-active-icon: rgba(0, 0, 0, 0.85);
+
+  /* Ant Design Mobile */
+  --adm-color-primary: var(--ios-blue);
+  --adm-color-background: #ffffff;
+  --adm-color-text: #000000;
+  --adm-border-color: rgba(0, 0, 0, 0.05);
 }
 
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ios-bg: #000000;
+    --glass-bg: rgba(28, 28, 30, 0.85);
+    --text-primary: #ffffff;
+    --text-secondary: rgba(255, 255, 255, 0.45);
+    --card-bg: rgba(28, 28, 30, 0.7);
+    --border-color: rgba(255, 255, 255, 0.12);
+
+    /* Input bar dark */
+    --input-bar-bg: #1c1c1e;
+    --input-bar-text: #ffffff;
+    --input-bar-placeholder: rgba(255, 255, 255, 0.22);
+    --input-bar-btn-idle: rgba(255, 255, 255, 0.08);
+    --input-bar-btn-idle-icon: rgba(255, 255, 255, 0.3);
+    --input-bar-btn-active: rgba(255, 255, 255, 0.18);
+    --input-bar-btn-active-icon: #ffffff;
+
+    /* Ant Design Mobile dark */
+    --adm-color-background: #1c1c1e;
+    --adm-color-text: #ffffff;
+    --adm-border-color: rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* ===================== Base ===================== */
 body {
   margin: 0;
   padding: 0;
+  background-color: var(--ios-bg);
+  min-height: 100vh;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
-  background-color: var(--md-sys-color-surface);
+  transition: background-color 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
   overflow-x: hidden;
 }
 
-/* Material 3 Typography */
-h1, h2, h3, h4, h5 {
-  font-family: 'Google Sans', sans-serif;
-  color: var(--md-sys-color-on-surface);
-  margin: 0;
+/* Dynamic ambient background */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image:
+    radial-gradient(at 0% 0%, rgba(0, 122, 255, 0.12) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(52, 199, 89, 0.08) 0px, transparent 40%);
+  transition: opacity 0.4s ease;
 }
 
-/* Base Tailwind Overrides & Custom Utilities */
-.m3-card {
-  background: white;
-  border-radius: 28px;
-  padding: 24px;
-  box-shadow: 0 1px 2px rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+@media (prefers-color-scheme: dark) {
+  body::before {
+    background-image:
+      radial-gradient(at 0% 0%, rgba(0, 122, 255, 0.18) 0px, transparent 60%),
+      radial-gradient(at 100% 100%, rgba(175, 82, 222, 0.12) 0px, transparent 50%);
+  }
 }
 
-.google-input {
-  background: #f1f3f4;
-  border-radius: 28px;
-  padding: 12px 20px;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+/* ===================== Utilities ===================== */
+*:focus {
+  outline: none !important;
 }
 
-.google-input:focus-within {
-  background: white;
-  box-shadow: 0 1px 2px rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+.recharts-wrapper, .recharts-surface {
+  outline: none !important;
 }
 
-/* Animation */
-@keyframes m3-fade-in {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+/* ===================== Liquid Glass ===================== */
+.liquid-glass {
+  background: var(--card-bg);
+  backdrop-filter: blur(25px) saturate(200%);
+  -webkit-backdrop-filter: blur(25px) saturate(200%);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.04);
+  transition: background 0.4s ease, border 0.4s ease, box-shadow 0.4s ease;
 }
 
-.animate-m3 {
-  animation: m3-fade-in 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+/* ===================== Input Bar ===================== */
+.input-bar {
+  background-color: var(--input-bar-bg);
+  transition: background-color 0.4s ease;
 }
 
-/* Ant Design Mobile Reset (Maintaining only essential TabBar tweaks) */
+.input-bar-text {
+  color: var(--input-bar-text);
+}
+
+.input-bar-placeholder::placeholder {
+  color: var(--input-bar-placeholder);
+}
+
+.input-bar-btn-idle {
+  color: var(--input-bar-btn-idle-icon);
+  background-color: var(--input-bar-btn-idle);
+}
+
+.input-bar-btn-active {
+  color: var(--input-bar-btn-active-icon);
+  background-color: var(--input-bar-btn-active);
+}
+
+/* ===================== Animation ===================== */
+@keyframes fluid-fade {
+  from { opacity: 0; transform: scale(0.97) translateY(15px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.animate-fluid {
+  animation: fluid-fade 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+/* ===================== Ant Design Modal ===================== */
+.adm-modal {
+  --background-color: var(--glass-bg) !important;
+  border-radius: 20px !important;
+}
+
+.adm-modal-header {
+  color: var(--text-primary) !important;
+  font-weight: 700 !important;
+}
+
+.adm-modal-content {
+  color: var(--text-primary) !important;
+}
+
+.adm-modal-footer button {
+  color: var(--ios-blue) !important;
+  background: transparent !important;
+  font-size: 17px !important;
+}
+
+.adm-modal-footer button.adm-modal-button-bold {
+  font-weight: 700 !important;
+}
+
+.adm-modal-footer .adm-border-top::before {
+  border-top: 0.5px solid var(--border-color) !important;
+}
+
+.adm-modal-footer .adm-border-right::before {
+  border-right: 0.5px solid var(--border-color) !important;
+}
+
+/* ===================== Ant Design Toast ===================== */
+.adm-toast-main {
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(15px) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(15px) saturate(150%) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1) !important;
+  font-weight: 600 !important;
+}
+
+/* ===================== Ant Design Input ===================== */
+.adm-input-element {
+  color: inherit !important;
+  background: transparent !important;
+}
+
+.custom-input-caret {
+  caret-color: var(--ios-blue);
+}
+
+/* ===================== Ant Design Tab Bar ===================== */
 .adm-tab-bar {
-  background: white !important;
-  border-top: none !important;
-  box-shadow: 0 -1px 2px rgba(0,0,0,0.05);
-  height: 80px;
-}
-
-.adm-tab-bar-item-active {
-  color: var(--md-sys-color-primary) !important;
-}
-
-/* Ensure SwipeAction content handles full-height background correctly */
-.adm-swipe-action-content {
   background: transparent !important;
-  padding: 0 !important;
 }
 
+/* ===================== Ant Design Swipe Action ===================== */
+.adm-swipe-action,
+.adm-swipe-action-content,
+.adm-swipe-action-track,
+.adm-swipe-action-actions,
+.adm-swipe-action-action-button {
+  background-color: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+
+.adm-swipe-action-action-button::after {
+  display: none !important;
+}
+
+.adm-swipe-action-actions-right {
+  background-color: transparent !important;
+}
+
+/* ===================== Ant Design List ===================== */
+.adm-list,
+.adm-list-body,
 .adm-list-item {
+  background-color: transparent !important;
+  border-bottom: none !important;
+  border-top: none !important;
   padding: 0 !important;
-  background: transparent !important;
 }
 
-.adm-swipe-action {
-  background-color: #ff3b30 !important; /* iOS Destructive Red */
+.adm-list-body::before,
+.adm-list-body::after,
+.adm-list-item::after {
+  display: none !important;
 }

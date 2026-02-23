@@ -4,18 +4,21 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  darkMode: 'media',
   theme: {
     extend: {
       colors: {
-        primary: '#3b82f6',
-        success: '#10b981',
-        warning: '#f59e0b',
-        danger: '#ef4444',
-        background: '#f8fafc',
+        'ios-blue': '#007aff',
+        'ios-bg': 'var(--ios-bg)',
+        'ios-primary': 'var(--text-primary)',
+        'ios-secondary': 'var(--text-secondary)',
+        'ios-card': 'var(--card-bg)',
+        'ios-border': 'var(--border-color)',
       },
       borderRadius: {
         'xl': '1rem',
         '2xl': '1.5rem',
+        '3xl': '2rem',
       }
     },
   },

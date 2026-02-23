@@ -1,17 +1,20 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useRef } from 'react'
 import { Input, Modal, Toast, SafeArea, SwipeAction } from 'antd-mobile'
 import dayjs from 'dayjs'
 import { useApp } from '../context/AppContext'
 import { calculateDailyBudget } from '../utils/budget'
 import { parseTransaction } from '../services/aiService'
 import { supabase } from '../utils/supabase'
-import { Search, Plus, Trash2, Calendar, TrendingUp, DollarSign, ChevronDown } from 'lucide-react'
+import { ArrowRight, Trash2, Calendar, TrendingUp, DollarSign, ChevronDown, Mic, MicOff } from 'lucide-react'
 
 const HomePage = () => {
   const { monthlySettings, totalExpenses, remainingDays, transactions, loading, refresh } = useApp()
   const [inputText, setInputText] = useState('')
   const [parsing, setParsing] = useState(false)
+  const [isListening, setIsListening] = useState(false)
   const [expandedDates, setExpandedDates] = useState([dayjs().format('YYYY-MM-DD')])
+  
+  const recognitionRef = useRef(null)
 
   const dailyBudget = calculateDailyBudget(
     monthlySettings.income,
@@ -27,7 +30,8 @@ const HomePage = () => {
       acc[dateKey].push(t)
       return acc
     }, {})
-    return Object.entries(groups).sort((a, b) => dayjs(b[0]).isBefore(dayjs(a[0])) ? 1 : -1).reverse()
+    // Sort newest first
+    return Object.entries(groups).sort((a, b) => dayjs(b[0]).diff(dayjs(a[0])))
   }, [transactions])
 
   const toggleDate = (date) => {
@@ -36,29 +40,68 @@ const HomePage = () => {
     )
   }
 
+  const startListening = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SpeechRecognition) {
+      Toast.show({ content: 'Speech recognition not supported' })
+      return
+    }
+
+    if (isListening) {
+      recognitionRef.current?.stop()
+      return
+    }
+
+    const recognition = new SpeechRecognition()
+    recognition.lang = 'zh-CN'
+    recognition.interimResults = false
+    recognition.continuous = false
+
+    recognition.onstart = () => setIsListening(true)
+    recognition.onend = () => setIsListening(false)
+    recognition.onerror = () => setIsListening(false)
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript
+      setInputText(transcript)
+    }
+
+    recognitionRef.current = recognition
+    recognition.start()
+  }
+
   const handleSend = async () => {
     if (!inputText.trim()) return
+    const toast = Toast.show({
+      icon: 'loading',
+      content: 'Processing...',
+      duration: 0,
+      maskClickable: false,
+    })
     setParsing(true)
     try {
       const parsed = await parseTransaction(inputText)
+      toast.close()
       
       Modal.confirm({
-        title: 'Save Transaction?',
+        title: <span className="text-ios-primary font-bold">Commit Transaction?</span>,
         content: (
-          <div className="py-4 space-y-4 font-sans text-[#202124]">
-             <div className="bg-[#f8f9fa] p-4 rounded-2xl border border-[#dadce0]">
-              <div className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-[#5f6368]">AMOUNT</span>
-                <span className="text-2xl font-medium text-[#1a73e8]">¥{parsed.amount}</span>
+          <div className="py-4">
+             <div className="liquid-glass p-6 rounded-[28px] shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-ios-blue/10 rounded-full blur-2xl -mr-8 -mt-8" />
+              <div className="flex flex-col gap-1 relative z-10">
+                <span className="text-[10px] font-bold text-ios-secondary uppercase tracking-[0.2em]">Validated Amount</span>
+                <span className="text-4xl font-bold text-ios-blue tracking-tight">¥{parsed.amount}</span>
               </div>
-              <div className="mt-4 flex flex-col gap-1">
-                <span className="text-xs font-medium text-[#5f6368]">DESCRIPTION</span>
-                <span className="text-sm font-medium">{parsed.description}</span>
+              <div className="mt-6 flex flex-col gap-1 relative z-10">
+                <span className="text-[10px] font-bold text-ios-secondary uppercase tracking-[0.2em]">Context</span>
+                <span className="text-lg font-medium text-ios-primary/80 leading-snug">{parsed.description || parsed.category}</span>
               </div>
             </div>
           </div>
         ),
-        confirmText: 'Save',
+        confirmText: <span className="font-bold">Save</span>,
+        cancelText: 'Cancel',
         onConfirm: async () => {
           const { error } = await supabase.from('transactions').insert([{
             amount: parsed.amount,
@@ -68,13 +111,14 @@ const HomePage = () => {
             date: parsed.date
           }])
           if (error) throw error
-          Toast.show({ content: 'Saved' })
+          Toast.show({ content: 'Record Synced', icon: 'success' })
           setInputText('')
           refresh()
         },
       })
     } catch (error) {
-      Toast.show({ content: 'Format error' })
+      toast.close()
+      Toast.show({ content: 'Syntax Error', icon: 'fail' })
     } finally {
       setParsing(false)
     }
@@ -82,115 +126,151 @@ const HomePage = () => {
 
   const handleDelete = (id) => {
     Modal.confirm({
-      title: 'Delete record?',
-      confirmText: 'Delete',
+      title: <span className="text-ios-primary font-bold">Irreversible action</span>,
+      content: <span className="text-ios-secondary">Delete this transaction record?</span>,
+      confirmText: <span className="font-bold">Delete</span>,
       danger: true,
       onConfirm: async () => {
         const { error } = await supabase.from('transactions').delete().eq('id', id)
         if (error) {
-          Toast.show({ content: 'Error' })
+          Toast.show({ content: 'Sync Error' })
         } else {
-          Toast.show({ content: 'Deleted' })
+          Toast.show({ content: 'Purged' })
           refresh()
         }
       },
     })
   }
 
+  if (loading && transactions.length === 0) return (
+    <div className="min-h-screen p-8 space-y-8 animate-pulse">
+      <div className="h-10 w-48 bg-ios-primary/5 rounded-full" />
+      <div className="h-64 bg-ios-primary/5 rounded-[32px]" />
+      <div className="h-20 bg-ios-primary/5 rounded-[28px]" />
+    </div>
+  )
+
   return (
-    <div className="min-h-screen bg-[#f8f9fa] pb-32 animate-m3 font-sans">
+    <div className="min-h-screen pb-40 animate-fluid">
       <SafeArea position='top' />
       
-      <header className="px-6 pt-10 flex items-center justify-between">
+      <header className="px-8 pt-12 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-medium tracking-tight text-[#202124]">Allowance</h1>
-          <p className="text-[#5f6368] text-sm mt-1">{dayjs().format('dddd, MMM D')}</p>
+          <h1 className="text-4xl font-bold tracking-tight text-ios-primary">Today</h1>
+          <p className="text-ios-secondary text-sm font-semibold mt-1 uppercase tracking-widest">
+            {dayjs().format('dddd, MMM D')}
+          </p>
         </div>
-        <div className="w-12 h-12 bg-[#e8f0fe] rounded-full flex items-center justify-center text-[#1a73e8]">
-          <DollarSign size={24} />
+        <div className="w-14 h-14 liquid-glass rounded-full flex items-center justify-center text-ios-blue shadow-sm">
+          <DollarSign size={28} />
         </div>
       </header>
 
-      <section className="px-4 mt-8">
-        <div className="m3-card bg-white">
-          <div className="flex flex-col">
-            <span className="text-xs font-medium text-[#5f6368] uppercase tracking-wider mb-2">Available for Today</span>
+      {/* Hero Liquid Card */}
+      <section className="px-6 mt-10">
+        <div className="liquid-glass rounded-[40px] p-8 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-ios-blue/10 rounded-full blur-[80px] -mr-16 -mt-16" />
+          <div className="relative z-10">
+            <header className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-black text-ios-secondary uppercase tracking-[0.3em]">Remaining Balance</span>
+              <div className="w-2 h-2 rounded-full bg-[#34c759] animate-pulse" />
+            </header>
             <div className="flex items-baseline gap-1">
-              <span className="text-6xl font-medium text-[#1a73e8] tracking-tighter">¥{dailyBudget}</span>
+              <span className={`text-7xl font-bold tracking-tighter transition-colors duration-500 ${dailyBudget < 0 ? 'text-[#ff3b30]' : 'text-ios-primary'}`}>
+                {dailyBudget < 0 ? '-' : ''}¥{Math.abs(dailyBudget)}
+              </span>
             </div>
+            {dailyBudget < 0 && (
+              <p className="text-[12px] font-bold text-[#ff3b30]/70 mt-1 uppercase tracking-widest">Over Budget</p>
+            )}
             
-            <div className="mt-8 grid grid-cols-2 gap-4">
-              <div className="bg-[#f8f9fa] p-4 rounded-2xl">
-                <div className="flex items-center gap-2 mb-1">
-                  <TrendingUp size={14} className="text-[#1a73e8]" />
-                  <span className="text-[10px] font-bold text-[#5f6368] uppercase">Spent</span>
+            <div className="mt-10 grid grid-cols-2 gap-4">
+              <div className="bg-ios-primary/5 backdrop-blur-md p-5 rounded-[28px] border border-ios-border">
+                <div className="flex items-center gap-2 mb-1.5 opacity-30">
+                  <TrendingUp size={14} className="text-ios-primary" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-ios-primary">Spent</span>
                 </div>
-                <span className="text-lg font-medium text-[#202124]">¥{totalExpenses.toFixed(1)}</span>
+                <span className="text-xl font-bold text-ios-primary/70">¥{totalExpenses.toFixed(0)}</span>
               </div>
-              <div className="bg-[#f8f9fa] p-4 rounded-2xl">
-                <div className="flex items-center gap-2 mb-1">
-                  <Calendar size={14} className="text-[#1a73e8]" />
-                  <span className="text-[10px] font-bold text-[#5f6368] uppercase">Days</span>
+              <div className="bg-ios-primary/5 backdrop-blur-md p-5 rounded-[28px] border border-ios-border">
+                <div className="flex items-center gap-2 mb-1.5 opacity-30">
+                  <Calendar size={14} className="text-ios-primary" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-ios-primary">Period</span>
                 </div>
-                <span className="text-lg font-medium text-[#202124]">{remainingDays}d</span>
+                <span className="text-xl font-bold text-ios-primary/70">{remainingDays}d</span>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      <div className="px-4 mt-8">
-        <div className="google-input flex items-center shadow-sm">
-          <Search size={20} className="text-[#5f6368]" />
+      <div className="px-6 mt-12 sticky top-6 z-20">
+        <div className="input-bar rounded-[32px] border border-ios-border flex items-center p-2.5 pl-5 transition-all duration-500 shadow-2xl">
           <Input
-            placeholder="Log expense (e.g. Lunch 40)"
-            className="flex-1 ml-3 text-[16px] placeholder:text-[#5f6368]/50"
+            placeholder="Log your spend..."
+            className="flex-1 text-[17px] font-medium custom-input-caret ml-1"
+            style={{ color: 'var(--input-bar-text)' }}
             value={inputText}
             onChange={setInputText}
             onEnterPress={handleSend}
           />
-          {inputText && (
+          <div className="flex items-center gap-3 pr-0.5">
             <button 
-              className="ml-2 w-10 h-10 bg-[#1a73e8] rounded-full flex items-center justify-center text-white"
-              onClick={handleSend}
+              onClick={startListening}
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${isListening ? 'text-[#ff3b30] animate-pulse' : 'text-ios-secondary hover:text-ios-primary'}`}
             >
-              <Plus size={20} strokeWidth={3} />
+              {isListening ? <MicOff size={24} strokeWidth={2.5} /> : <Mic size={24} strokeWidth={2.5} />}
             </button>
-          )}
+            <button 
+              className={`w-11 h-11 rounded-full flex items-center justify-center transition-all duration-500 ${parsing ? 'opacity-50 scale-90' : ''} ${inputText ? 'input-bar-btn-active shadow-xl' : 'input-bar-btn-idle'}`}
+              onClick={handleSend}
+              disabled={parsing}
+            >
+              {parsing ? (
+                <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <ArrowRight size={22} strokeWidth={3} />
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
-      <section className="mt-10 px-4">
-        <h2 className="text-sm font-medium text-[#5f6368] mb-4 px-2">Recent Activity</h2>
+      {/* Activity Timeline */}
+      <section className="mt-14 px-6">
+        <div className="flex items-center justify-between mb-8 px-4">
+           <h2 className="text-xl font-bold text-ios-primary tracking-tight">Timeline</h2>
+           <span className="text-[11px] font-bold text-ios-secondary uppercase tracking-[0.2em]">{transactions.length} Events</span>
+        </div>
         
-        <div className="space-y-4">
+        <div className="space-y-6">
           {groupedTransactions.map(([date, items]) => {
             const isToday = date === dayjs().format('YYYY-MM-DD')
-            const displayDate = isToday ? 'Today' : dayjs(date).format('MMM D, dddd')
+            const displayDate = isToday ? 'Today' : dayjs(date).format('MMM D')
             const dayTotal = items.reduce((sum, item) => sum + Number(item.amount), 0)
             const isExpanded = expandedDates.includes(date)
 
             return (
-              <div key={date} className="bg-white rounded-[28px] overflow-hidden shadow-[0_1px_2px_rgba(60,64,67,0.3),0_1px_3px_1px_rgba(60,64,67,0.15)]">
+              <div key={date} className="relative">
                 <button 
                   onClick={() => toggleDate(date)}
-                  className="w-full flex items-center justify-between p-5 group active:bg-[#f8f9fa] transition-colors"
+                  className="w-full flex items-center justify-between p-2 mb-2 group active:opacity-50 transition-opacity"
                 >
                   <div className="flex items-center gap-3">
-                    <div className={`p-1 rounded-full transition-colors ${isExpanded ? 'bg-[#e8f0fe] text-[#1a73e8]' : 'text-[#5f6368]'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${isExpanded ? 'bg-ios-primary text-ios-bg' : 'bg-ios-primary/5 text-ios-secondary'}`}>
                       <ChevronDown 
-                        size={18} 
-                        strokeWidth={2.5}
-                        className={`transition-transform duration-300 ${isExpanded ? '' : '-rotate-90'}`}
+                        size={16} 
+                        strokeWidth={4}
+                        className={`transition-transform duration-500 ${isExpanded ? '' : '-rotate-90'}`}
                       />
                     </div>
-                    <span className="text-sm font-medium text-[#202124]">{displayDate}</span>
+                    <span className="text-lg font-bold text-ios-primary tracking-tight">{displayDate}</span>
                   </div>
-                  <span className="text-sm font-medium text-[#1a73e8]">¥{dayTotal.toFixed(1)}</span>
+                  <span className="text-lg font-bold text-ios-secondary">¥{dayTotal.toFixed(0)}</span>
                 </button>
 
-                <div className={`transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
-                  <div className="divide-y divide-[#f1f3f4]">
+                <div className={`transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] ${isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
+                  <div className="space-y-3 px-1">
                     {items.map(t => (
                       <SwipeAction
                         key={t.id}
@@ -198,30 +278,31 @@ const HomePage = () => {
                           {
                             key: 'delete',
                             text: (
-                              <div className="flex flex-col items-center justify-center h-full w-20 text-white gap-1">
-                                <Trash2 size={22} strokeWidth={2.5} />
-                                <span className="text-[10px] font-bold uppercase tracking-tighter">Delete</span>
+                              <div className="flex items-center justify-center h-full px-2">
+                                <div className="flex items-center justify-center w-14 h-14 bg-[#ff3b30] text-white rounded-full shadow-lg border border-white/20">
+                                  <Trash2 size={24} strokeWidth={2.5} />
+                                </div>
                               </div>
                             ),
                             onClick: () => handleDelete(t.id),
                           }
                         ]}
                       >
-                        <div className="flex items-center justify-between p-5 bg-white active:bg-[#f8f9fa] transition-colors group">
+                        <div className="liquid-glass rounded-[24px] p-5 flex items-center justify-between active:scale-[0.98] transition-all duration-200">
                           <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-[#f1f3f4] rounded-2xl flex items-center justify-center text-[#5f6368] group-active:bg-[#e8eaed] transition-colors">
-                              <span className="text-xs font-bold uppercase">{t.category[0]}</span>
+                            <div className="w-12 h-12 bg-ios-primary/5 rounded-2xl flex items-center justify-center text-ios-secondary shadow-sm border border-ios-border">
+                              <span className="text-xs font-black uppercase tracking-tighter">{t.category[0]}</span>
                             </div>
                             <div className="flex flex-col">
-                              <span className="text-[15px] font-medium text-[#202124] truncate max-w-[150px]">
+                              <span className="text-[17px] font-semibold text-ios-primary/90 truncate max-w-[150px]">
                                 {t.description || t.category}
                               </span>
-                              <span className="text-[12px] text-[#5f6368]">{dayjs(t.date).format('h:mm A')}</span>
+                              <span className="text-[13px] font-medium text-ios-secondary">{dayjs(t.date).format('h:mm A')}</span>
                             </div>
                           </div>
-                          <div className="flex flex-col items-end gap-1.5">
-                            <span className="text-[16px] font-medium text-[#202124]">¥{t.amount}</span>
-                            <span className="text-[10px] font-medium px-2.5 py-0.5 rounded-full bg-[#e8f0fe] text-[#1a73e8] tracking-tight">
+                          <div className="flex flex-col items-end gap-1">
+                            <span className="text-[19px] font-bold text-ios-primary tracking-tight">¥{t.amount}</span>
+                            <span className="text-[9px] font-black px-2.5 py-1 rounded-lg bg-ios-primary/5 text-ios-secondary uppercase tracking-[0.1em]">
                               {t.category}
                             </span>
                           </div>
@@ -233,12 +314,6 @@ const HomePage = () => {
               </div>
             )
           })}
-          
-          {transactions.length === 0 && !loading && (
-            <div className="py-20 text-center text-[#5f6368]/40">
-              <p className="text-sm">No activity recorded yet</p>
-            </div>
-          )}
         </div>
       </section>
       

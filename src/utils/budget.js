@@ -1,9 +1,10 @@
 /**
  * Calculate the daily available budget.
- * Formula: (Income - Savings Goal - Total Expenses This Month) / Remaining Days in Month.
+ * Formula: (Income - Savings Goal - Total Expenses) / Remaining Days in Month.
+ * Returns a negative number when over-budget.
  */
 export const calculateDailyBudget = (income, savingsGoal, totalExpenses, remainingDays) => {
+  if (remainingDays <= 0) return 0
   const surplus = income - savingsGoal - totalExpenses
-  if (surplus <= 0) return 0
-  return (surplus / remainingDays).toFixed(2)
+  return parseFloat((surplus / remainingDays).toFixed(2))
 }

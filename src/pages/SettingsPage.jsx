@@ -11,11 +11,13 @@ const SettingsPage = () => {
   const [form] = Form.useForm()
 
   useEffect(() => {
-    form.setFieldsValue({
-      income: monthlySettings.income,
-      savings_goal: monthlySettings.savings_goal,
-      initial_spent: monthlySettings.initial_spent || 0
-    })
+    if (monthlySettings && monthlySettings.income !== undefined) {
+      form.setFieldsValue({
+        income: monthlySettings.income,
+        savings_goal: monthlySettings.savings_goal,
+        initial_spent: monthlySettings.initial_spent || 0
+      })
+    }
   }, [monthlySettings, form])
 
   const onFinish = async (values) => {
@@ -33,112 +35,130 @@ const SettingsPage = () => {
       
       if (error) throw error
       
-      Toast.show({ content: 'Preferences updated', position: 'bottom' })
+      Toast.show({ content: 'Policy Updated' })
       refresh()
     } catch (error) {
-      Toast.show({ content: 'Failed to update' })
+      Toast.show({ content: 'Sync failed' })
     } finally {
       setLoading(false)
     }
   }
 
+  if (!monthlySettings) return null;
+
   return (
-    <div className="min-h-screen bg-[#f8f9fa] pb-32 animate-m3 font-sans">
+    <div className="min-h-screen pb-40 animate-fluid font-sans">
       <SafeArea position='top' />
       
-      <header className="px-6 pt-10 mb-8">
-        <h1 className="text-3xl font-medium tracking-tight text-[#202124]">Configuration</h1>
-        <p className="text-[#5f6368] text-sm mt-1 flex items-center gap-2">
-          <Settings size={16} /> Budgeting for {getCurrentMonth()}
+      <header className="px-8 pt-12 mb-10">
+        <h1 className="text-4xl font-bold tracking-tight text-ios-primary">Control</h1>
+        <p className="text-ios-secondary text-sm font-semibold mt-1 uppercase tracking-widest flex items-center gap-2">
+          <Settings size={14} className="text-[#007aff]" /> System Calibration
         </p>
       </header>
 
-      <section className="px-4">
-        <form onSubmit={(e) => {
-          e.preventDefault();
-          form.validateFields().then(values => onFinish(values));
-        }}>
-          <div className="space-y-6">
-            {/* Primary Parameters Card */}
-            <div className="bg-white rounded-[28px] p-6 shadow-[0_1px_2px_rgba(60,64,67,0.3),0_1px_3px_1px_rgba(60,64,67,0.15)]">
-              <h4 className="text-[11px] font-bold text-[#5f6368] uppercase tracking-widest mb-6 px-1">Primary Parameters</h4>
+      <section className="px-6">
+        <Form 
+          form={form} 
+          onFinish={onFinish}
+          className="!bg-transparent"
+        >
+          <div className="space-y-8">
+            <div className="liquid-glass rounded-[40px] p-8 space-y-8">
+              <h4 className="text-[11px] font-black text-ios-secondary uppercase tracking-[0.3em] px-1">Economy Settings</h4>
               
-              <div className="space-y-6">
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-medium text-[#202124] flex items-center gap-2">
-                    <CreditCard size={18} className="text-[#1a73e8]" /> Monthly Income
+              <div className="space-y-8">
+                <div className="flex flex-col gap-3">
+                  <label className="text-[17px] font-bold text-ios-primary/70 flex items-center gap-2 pl-1">
+                    <CreditCard size={20} className="text-[#007aff]" /> Monthly Fuel (Income)
                   </label>
-                  <div className="flex items-center bg-[#f1f3f4] rounded-2xl px-4 py-3 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#1a73e8]/20 transition-all">
-                    <span className="text-[#5f6368] font-medium mr-2">¥</span>
-                    <Form.Item name="income" noStyle>
-                      <Input type="number" placeholder="0.00" className="bg-transparent border-none p-0 text-lg font-medium w-full focus:outline-none" />
-                    </Form.Item>
+                  <div className="bg-black/5 dark:bg-white/5 focus-within:bg-white dark:focus-within:bg-white/10 focus-within:shadow-xl rounded-[28px] p-6 border border-white/10 transition-all duration-500">
+                    <div className="flex items-center">
+                      <span className="text-2xl font-black text-ios-primary/10 mr-3">¥</span>
+                      <Form.Item name="income" noStyle>
+                        <Input 
+                          type="number" 
+                          placeholder="Current Settings" 
+                          className="bg-transparent border-none p-0 text-3xl font-bold text-ios-primary w-full" 
+                        />
+                      </Form.Item>
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-medium text-[#202124] flex items-center gap-2">
-                    <PiggyBank size={18} className="text-[#34a853]" /> Savings Goal
+                <div className="flex flex-col gap-3">
+                  <label className="text-[17px] font-bold text-ios-primary/70 flex items-center gap-2 pl-1">
+                    <PiggyBank size={20} className="text-[#34c759]" /> Savings Goal
                   </label>
-                  <div className="flex items-center bg-[#f1f3f4] rounded-2xl px-4 py-3 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#1a73e8]/20 transition-all">
-                    <span className="text-[#5f6368] font-medium mr-2">¥</span>
-                    <Form.Item name="savings_goal" noStyle>
-                      <Input type="number" placeholder="0.00" className="bg-transparent border-none p-0 text-lg font-medium w-full focus:outline-none" />
-                    </Form.Item>
+                  <div className="bg-black/5 dark:bg-white/5 focus-within:bg-white dark:focus-within:bg-white/10 focus-within:shadow-xl rounded-[28px] p-6 border border-white/10 transition-all duration-500">
+                    <div className="flex items-center">
+                      <span className="text-2xl font-black text-ios-primary/10 mr-3">¥</span>
+                      <Form.Item name="savings_goal" noStyle>
+                        <Input 
+                          type="number" 
+                          placeholder="Efficiency Target" 
+                          className="bg-transparent border-none p-0 text-3xl font-bold text-ios-primary w-full" 
+                        />
+                      </Form.Item>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Adjustments Card */}
-            <div className="bg-white rounded-[28px] p-6 shadow-[0_1px_2px_rgba(60,64,67,0.3),0_1px_3px_1px_rgba(60,64,67,0.15)]">
-              <h4 className="text-[11px] font-bold text-[#5f6368] uppercase tracking-widest mb-6 px-1">Adjustments</h4>
-              
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-[#202124] flex items-center gap-2">
-                  <History size={18} className="text-[#ea4335]" /> Previous Expenses
+            <div className="liquid-glass rounded-[40px] p-8">
+              <h4 className="text-[11px] font-black text-ios-secondary uppercase tracking-[0.3em] mb-6 px-1">Data Correction</h4>
+              <div className="flex flex-col gap-3">
+                <label className="text-[17px] font-bold text-ios-primary/70 flex items-center gap-2 pl-1">
+                  <History size={20} className="text-[#ff3b30]" /> Spent Elsewhere
                 </label>
-                <div className="flex items-center bg-[#f1f3f4] rounded-2xl px-4 py-3 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#1a73e8]/20 transition-all">
-                  <span className="text-[#5f6368] font-medium mr-2">¥</span>
-                  <Form.Item name="initial_spent" noStyle>
-                    <Input type="number" placeholder="0.00" className="bg-transparent border-none p-0 text-lg font-medium w-full focus:outline-none" />
-                  </Form.Item>
+                <div className="bg-black/5 dark:bg-white/5 focus-within:bg-white dark:focus-within:bg-white/10 focus-within:shadow-xl rounded-[28px] p-6 border border-white/10 transition-all duration-500">
+                  <div className="flex items-center">
+                    <span className="text-2xl font-black text-ios-primary/10 mr-3">¥</span>
+                    <Form.Item name="initial_spent" noStyle>
+                      <Input 
+                        type="number" 
+                        placeholder="Offset Balance" 
+                        className="bg-transparent border-none p-0 text-3xl font-bold text-ios-primary w-full" 
+                      />
+                    </Form.Item>
+                  </div>
                 </div>
-                <p className="text-[11px] text-[#5f6368] mt-1 pl-1">Already spent before creating this budget</p>
+                <p className="text-[12px] font-medium text-ios-secondary px-4 mt-2 leading-relaxed">Adjust your remaining budget if you spent money outside this ledger.</p>
               </div>
             </div>
 
-            {/* Submit Button */}
-            <div className="px-2 pt-4">
+            <div className="pt-4">
               <button 
                 type="submit"
                 disabled={loading}
-                className="w-full h-14 rounded-[28px] text-white bg-[#1a73e8] hover:bg-[#1a73e8]/90 active:scale-[0.98] transition-all font-medium disabled:opacity-50 shadow-md flex items-center justify-center gap-2"
+                className="w-full py-5 rounded-full bg-[#007aff] text-white font-black text-lg shadow-[0_10px_30px_rgba(0,0,0,0.1)] active:scale-[0.98] transition-all duration-500 disabled:opacity-50 overflow-hidden relative group"
               >
-                {loading ? 'Processing...' : 'Save Settings'}
+                <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                {loading ? 'CALIBRATING...' : 'APPLY POLICY'}
               </button>
             </div>
           </div>
-        </form>
+        </Form>
 
-        {/* Info Callout */}
-        <div className="mt-10 mx-2 p-6 bg-[#e8f0fe] rounded-[28px] border border-[#d2e3fc]">
-          <div className="flex gap-4">
-            <div className="bg-white p-2 h-fit rounded-xl text-[#1a73e8]">
-              <Info size={20} />
+        <div className="mt-16 p-8 liquid-glass rounded-[40px] relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-[#007aff]/5 rounded-full blur-3xl -mr-16 -mt-16 transition-transform duration-1000 group-hover:scale-150" />
+          <div className="flex gap-6 relative z-10">
+            <div className="bg-white/10 dark:bg-white/5 backdrop-blur-md p-4 h-fit rounded-[22px] text-[#007aff] shadow-sm border border-white/20">
+              <Info size={26} />
             </div>
             <div>
-              <h5 className="text-sm font-medium text-[#1967d2] mb-1 tracking-tight">How it works</h5>
-              <p className="text-xs text-[#1967d2]/80 leading-relaxed">
-                Daily Budget = (Income - Goal - Total Spent - Offset) / Days Remaining. 
-                Keep your parameters updated for accurate precision.
+              <h5 className="text-[18px] font-black text-ios-primary/80 mb-2">Liquid Engine</h5>
+              <p className="text-[14px] font-medium text-ios-secondary leading-relaxed">
+                Settings are synced instantly across your account. Changes to income or goals will immediately recalculate your remaining daily burn rate.
               </p>
             </div>
           </div>
         </div>
 
-        <div className="mt-16 text-center text-[10px] text-[#5f6368] font-bold uppercase tracking-[0.2em] opacity-40">
-          DailyLeft v1.2.0 • Material Desgin
+        <div className="mt-24 pb-12 flex flex-col items-center gap-2 opacity-10">
+           <div className="h-0.5 w-12 bg-ios-primary rounded-full mb-2" />
+           <span className="text-[10px] font-black uppercase tracking-[0.5em] text-ios-primary">System OS 2.0.4</span>
         </div>
       </section>
       

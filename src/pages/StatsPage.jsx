@@ -1,196 +1,204 @@
 import React, { useMemo } from 'react'
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts'
 import { SafeArea } from 'antd-mobile'
 import { useApp } from '../context/AppContext'
-import { BarChart3, Wallet, PieChart as PieIcon, LineChart, Activity } from 'lucide-react'
-
-const COLORS = [
-  '#1a73e8', // Google Blue
-  '#ea4335', // Google Red
-  '#fbbc04', // Google Yellow
-  '#34a853', // Google Green
-  '#fa7b17', // Orange
-  '#9334e6', // Purple
-  '#12b5cb', // Cyan
-  '#5f6368'  // Gray
-]
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart as RePieChart, Pie } from 'recharts'
+import dayjs from 'dayjs'
+import { BarChart3, PieChart, Activity, Target } from 'lucide-react'
+import { getCurrentMonth } from '../utils/date'
 
 const StatsPage = () => {
-  const { transactions, loading, totalExpenses, monthlySettings } = useApp()
+  const { transactions, recentTransactions, loading, totalExpenses } = useApp()
+  const currentMonthStr = getCurrentMonth()
 
-  const data = useMemo(() => {
-    const expenses = transactions.filter(t => t.type === 'expense')
-    const grouped = expenses.reduce((acc, curr) => {
-      acc[curr.category] = (acc[curr.category] || 0) + Number(curr.amount)
+  const dailyStats = useMemo(() => {
+    const last7Days = Array.from({ length: 7 }, (_, i) => {
+      return dayjs().subtract(6 - i, 'day').format('MM-DD')
+    })
+
+    const stats = last7Days.reduce((acc, date) => {
+      acc[date] = 0
       return acc
     }, {})
 
-    if (monthlySettings.initial_spent > 0) {
-      grouped['Offset'] = (grouped['Offset'] || 0) + Number(monthlySettings.initial_spent)
-    }
+    recentTransactions.forEach(t => {
+      if (t.type !== 'expense') return
+      const date = dayjs(t.date).format('MM-DD')
+      if (stats[date] !== undefined) {
+        stats[date] += Number(t.amount)
+      }
+    })
 
-    return Object.entries(grouped)
-      .map(([name, value]) => ({ name, value }))
+    return Object.entries(stats).map(([name, amount]) => ({ name, amount }))
+  }, [recentTransactions])
+
+  const categoryStats = useMemo(() => {
+    const monthlyTrans = transactions.filter(t => t.type === 'expense' && t.date.startsWith(currentMonthStr))
+    const stats = monthlyTrans.reduce((acc, t) => {
+      acc[t.category] = (acc[t.category] || 0) + Number(t.amount)
+      return acc
+    }, {})
+
+    const total = Object.values(stats).reduce((a, b) => a + b, 0)
+
+    return Object.entries(stats)
+      .map(([name, value]) => ({ 
+        name, 
+        value, 
+        percent: total > 0 ? ((value / total) * 100).toFixed(1) : 0 
+      }))
       .sort((a, b) => b.value - a.value)
-  }, [transactions, monthlySettings.initial_spent])
+  }, [transactions, currentMonthStr])
 
-  const dailyData = useMemo(() => {
-    const last7Days = [...Array(7)].map((_, i) => {
-      const d = new Date()
-      d.setDate(d.getDate() - i)
-      return d.toISOString().split('T')[0]
-    }).reverse()
-
-    const expensesByDay = transactions
-      .filter(t => t.type === 'expense')
-      .reduce((acc, curr) => {
-        const date = curr.date.split('T')[0]
-        acc[date] = (acc[date] || 0) + Number(curr.amount)
-        return acc
-      }, {})
-
-    return last7Days.map(date => ({
-      date: date.split('-').slice(2).join('/'),
-      amount: expensesByDay[date] || 0
-    }))
-  }, [transactions])
+  const COLORS = ['#007aff', '#34c759', '#af52de', '#ff9500', '#ff3b30', '#5856d6', '#ff2d55']
 
   if (loading) return (
-    <div className="p-10 space-y-8 bg-[#f8f9fa] min-h-screen animate-pulse">
-      <div className="h-8 w-48 bg-[#eeeeee] rounded-full" />
-      <div className="h-4 w-32 bg-[#eeeeee] rounded-full" />
-      <div className="h-64 bg-white rounded-[28px] shadow-sm" />
-      <div className="space-y-4">
-        {[1, 2, 3, 4].map(i => (
-          <div key={i} className="h-16 bg-white rounded-2xl shadow-sm" />
-        ))}
-      </div>
+    <div className="min-h-screen p-8 space-y-8 animate-pulse">
+      <div className="h-10 w-48 bg-ios-primary/5 rounded-full" />
+      <div className="h-80 bg-ios-primary/5 rounded-[32px]" />
+      <div className="h-64 bg-ios-primary/5 rounded-[32px]" />
     </div>
   )
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa] pb-32 animate-m3 font-sans">
+    <div className="min-h-screen pb-40 animate-fluid">
       <SafeArea position='top' />
       
-      <header className="px-6 pt-10 mb-8">
-        <h1 className="text-3xl font-medium tracking-tight text-[#202124]">Activity</h1>
-        <p className="text-[#5f6368] text-sm mt-1 flex items-center gap-2">
-          <Activity size={16} className="text-[#1a73e8]" /> Monthly usage overview
+      <header className="px-8 pt-12 mb-10">
+        <h1 className="text-4xl font-bold tracking-tight text-ios-primary">Analytics</h1>
+        <p className="text-ios-secondary text-sm font-semibold mt-1 uppercase tracking-widest flex items-center gap-2">
+          <Activity size={14} className="text-[#34c759]" /> Performance overview
         </p>
       </header>
 
-      <section className="px-4 space-y-6">
-        {/* Total Surface */}
-        <div className="bg-[#e8f0fe] p-6 rounded-[28px] border border-[#d2e3fc]">
-          <div className="flex items-center gap-4">
-            <div className="bg-white p-3 rounded-2xl text-[#1a73e8] shadow-sm">
-              <Wallet size={24} />
+      <section className="px-6 space-y-8">
+        {/* Weekly Chart Card */}
+        <div className="liquid-glass rounded-[40px] p-8">
+          <header className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-2">
+              <BarChart3 size={18} className="text-ios-blue" />
+              <span className="text-sm font-bold text-ios-primary uppercase tracking-widest">Daily Burn Rate</span>
             </div>
-            <div>
-              <p className="text-xs font-bold text-[#1967d2] uppercase tracking-widest">Spent this month</p>
-              <p className="text-2xl font-medium text-[#1a73e8]">¥{totalExpenses.toFixed(1)}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Charts Section */}
-        <div className="m3-card">
-          <h3 className="text-sm font-medium text-[#202124] mb-6 flex items-center gap-2">
-            <PieIcon size={18} className="text-[#1a73e8]" /> Breakdown
-          </h3>
-          <div className="h-[240px] w-full">
-            {data.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={data}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={65}
-                    outerRadius={90}
-                    stroke="none"
-                    paddingAngle={4}
-                    dataKey="value"
-                    isAnimationActive={true}
-                  >
-                    {data.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ 
-                      borderRadius: '16px', 
-                      border: 'none', 
-                      boxShadow: '0 8px 24px rgba(60,64,67,0.15)',
-                      padding: '12px 16px',
-                      fontFamily: 'Google Sans, sans-serif'
-                    }}
-                    itemStyle={{ color: '#202124', fontWeight: 500 }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-full text-[#5f6368]/30 italic text-sm">No records logged</div>
-            )}
-          </div>
-        </div>
-
-        <div className="m3-card">
-          <h3 className="text-sm font-medium text-[#202124] mb-6 flex items-center gap-2">
-            <LineChart size={18} className="text-[#34a853]" /> 7-Day Trend
-          </h3>
-          <div className="h-[180px] w-full">
+            <span className="text-[10px] font-black text-ios-secondary uppercase tracking-widest">7 Day Pulse</span>
+          </header>
+          
+          <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={dailyData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f3f4" />
+              <BarChart data={dailyStats}>
+                <CartesianGrid vertical={false} strokeOpacity={0.1} stroke="var(--text-primary)" />
                 <XAxis 
-                  dataKey="date" 
+                  dataKey="name" 
                   axisLine={false} 
                   tickLine={false} 
-                  tick={{ fontSize: 11, fill: '#5f6368', fontWeight: 500 }} 
-                  dy={10}
+                  tick={{ fill: 'var(--text-secondary)', fontSize: 10, fontWeight: 'bold' }}
                 />
-                <YAxis hide />
                 <Tooltip 
-                  cursor={{ fill: '#f1f3f4', radius: 8 }}
-                  contentStyle={{ 
-                    borderRadius: '12px', 
-                    border: 'none', 
-                    boxShadow: '0 8px 24px rgba(60,64,67,0.15)',
-                    padding: '12px 16px'
+                  cursor={{ fill: 'rgba(0,0,0,0.05)' }}
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      return (
+                        <div className="liquid-glass rounded-2xl px-4 py-2 border-none shadow-xl">
+                          <p className="text-xs font-black text-ios-primary">¥{payload[0].value}</p>
+                        </div>
+                      )
+                    }
+                    return null
                   }}
                 />
-                <Bar dataKey="amount" fill="#1a73e8" radius={[6, 6, 6, 6]} barSize={24} isAnimationActive={true} />
+                <Bar dataKey="amount" radius={[10, 10, 10, 10]} barSize={35}>
+                  {dailyStats.map((entry, index) => (
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={index === dailyStats.length - 1 ? '#007aff' : '#007aff20'} 
+                      className="transition-all duration-500"
+                    />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Categories Table Style */}
-        <div className="mt-8 px-2 pb-10">
-          <h4 className="text-[11px] font-bold text-[#5f6368] uppercase tracking-widest mb-4">Categories</h4>
-          <div className="space-y-2">
-            {data.map((item, index) => (
-              <div 
-                key={item.name} 
-                className="flex items-center justify-between p-4 bg-white rounded-[20px] shadow-sm hover:shadow-md transition-all group"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-4 h-4 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
-                  <span className="text-[15px] font-medium text-[#202124]">{item.name}</span>
-                </div>
-                <div className="flex items-center gap-6">
-                   <div className="bg-[#f1f3f4] px-2 py-0.5 rounded-full">
-                     <span className="text-[#5f6368] text-[10px] font-bold tracking-tight">{((item.value / data.reduce((s, i) => s + i.value, 0)) * 100).toFixed(0)}%</span>
-                   </div>
-                   <span className="text-[16px] font-medium text-[#202124] w-20 text-right">¥{item.value.toFixed(0)}</span>
+        {/* Monthly Percentage Allocation */}
+        <div className="liquid-glass rounded-[40px] p-8">
+           <header className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-2">
+                <PieChart size={18} className="text-[#af52de]" />
+                <span className="text-sm font-bold text-ios-primary uppercase tracking-widest">Monthly Allocation</span>
+              </div>
+              <span className="text-[10px] font-black text-ios-secondary uppercase tracking-widest">{dayjs().format('MMMM')}</span>
+            </header>
+
+            <div className="flex flex-col items-center">
+              <div className="h-64 w-full relative">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RePieChart>
+                    <Pie
+                      data={categoryStats}
+                      innerRadius={70}
+                      outerRadius={90}
+                      paddingAngle={8}
+                      dataKey="value"
+                      stroke="none"
+                    >
+                      {categoryStats.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          return (
+                            <div className="liquid-glass rounded-2xl px-4 py-2 border-none shadow-xl">
+                              <p className="text-xs font-black text-ios-primary">{payload[0].name}: {payload[0].value}</p>
+                            </div>
+                          )
+                        }
+                        return null
+                      }}
+                    />
+                  </RePieChart>
+                </ResponsiveContainer>
+                {/* Center Text */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-[10px] font-black text-ios-secondary uppercase tracking-widest">Total Spent</span>
+                  <span className="text-2xl font-black text-ios-primary tracking-tighter">¥{totalExpenses.toFixed(0)}</span>
                 </div>
               </div>
-            ))}
-          </div>
+
+              <div className="w-full space-y-3 mt-8">
+                {categoryStats.map((cat, idx) => (
+                  <div key={cat.name} className="group">
+                    <div className="flex items-center justify-between mb-2 px-1">
+                      <div className="flex items-center gap-3">
+                        <div 
+                          className="w-3 h-3 rounded-full" 
+                          style={{ backgroundColor: COLORS[idx % COLORS.length] }} 
+                        />
+                        <span className="text-sm font-bold text-ios-primary">{cat.name}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-black text-ios-secondary">¥{cat.value}</span>
+                        <span className="text-xs font-black text-ios-primary w-12 text-right">{cat.percent}%</span>
+                      </div>
+                    </div>
+                    {/* Progress Bar Style */}
+                    <div className="h-1.5 w-full bg-ios-primary/5 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full rounded-full transition-all duration-1000 ease-out"
+                        style={{ 
+                          width: `${cat.percent}%`, 
+                          backgroundColor: COLORS[idx % COLORS.length],
+                          opacity: 0.8
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
         </div>
       </section>
-      
+
       <SafeArea position='bottom' />
     </div>
   )
