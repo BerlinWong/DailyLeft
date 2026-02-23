@@ -1,16 +1,17 @@
 import React, { useState, useMemo } from 'react'
-import { Card, Input, Button, Modal, List, Tag, Toast, SafeArea, SwipeAction, Collapse } from 'antd-mobile'
+import { Input, Modal, Toast, SafeArea, SwipeAction } from 'antd-mobile'
 import dayjs from 'dayjs'
 import { useApp } from '../context/AppContext'
 import { calculateDailyBudget } from '../utils/budget'
 import { parseTransaction } from '../services/aiService'
 import { supabase } from '../utils/supabase'
-import { Send, Plus, ReceiptText, Sparkles, TrendingUp, Trash2 } from 'lucide-react'
+import { Search, Plus, Trash2, Calendar, TrendingUp, DollarSign, ChevronDown } from 'lucide-react'
 
 const HomePage = () => {
   const { monthlySettings, totalExpenses, remainingDays, transactions, loading, refresh } = useApp()
   const [inputText, setInputText] = useState('')
   const [parsing, setParsing] = useState(false)
+  const [expandedDates, setExpandedDates] = useState([dayjs().format('YYYY-MM-DD')])
 
   const dailyBudget = calculateDailyBudget(
     monthlySettings.income,
@@ -29,6 +30,12 @@ const HomePage = () => {
     return Object.entries(groups).sort((a, b) => dayjs(b[0]).isBefore(dayjs(a[0])) ? 1 : -1).reverse()
   }, [transactions])
 
+  const toggleDate = (date) => {
+    setExpandedDates(prev => 
+      prev.includes(date) ? prev.filter(d => d !== date) : [...prev, date]
+    )
+  }
+
   const handleSend = async () => {
     if (!inputText.trim()) return
     setParsing(true)
@@ -36,33 +43,22 @@ const HomePage = () => {
       const parsed = await parseTransaction(inputText)
       
       Modal.confirm({
-        title: (
-          <div className="flex items-center gap-2 text-primary">
-            <Sparkles size={20} />
-            <span>AI Analyzed</span>
-          </div>
-        ),
+        title: 'Save Transaction?',
         content: (
-          <div className="py-4 space-y-4">
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-              <div className="flex justify-between items-center mb-3">
-                <span className="text-slate-400 text-xs">Amount</span>
-                <span className="text-2xl font-black text-slate-900">¥{parsed.amount}</span>
+          <div className="py-4 space-y-4 font-sans text-[#202124]">
+             <div className="bg-[#f8f9fa] p-4 rounded-2xl border border-[#dadce0]">
+              <div className="flex flex-col gap-1">
+                <span className="text-xs font-medium text-[#5f6368]">AMOUNT</span>
+                <span className="text-2xl font-medium text-[#1a73e8]">¥{parsed.amount}</span>
               </div>
-              <div className="flex justify-between items-center mb-3">
-                <span className="text-slate-400 text-xs">Category</span>
-                <Tag color='primary' fill='outline' className="rounded-md px-2 py-0.5">{parsed.category}</Tag>
-              </div>
-              <div>
-                <span className="text-slate-400 text-xs block mb-1">Description</span>
-                <span className="text-slate-700 font-medium">{parsed.description}</span>
+              <div className="mt-4 flex flex-col gap-1">
+                <span className="text-xs font-medium text-[#5f6368]">DESCRIPTION</span>
+                <span className="text-sm font-medium">{parsed.description}</span>
               </div>
             </div>
-            <p className="text-xs text-center text-slate-400 italic">Is this correct?</p>
           </div>
         ),
-        confirmText: 'Save Transaction',
-        cancelText: 'Edit',
+        confirmText: 'Save',
         onConfirm: async () => {
           const { error } = await supabase.from('transactions').insert([{
             amount: parsed.amount,
@@ -72,14 +68,13 @@ const HomePage = () => {
             date: parsed.date
           }])
           if (error) throw error
-          Toast.show({ icon: 'success', content: 'Success!' })
+          Toast.show({ content: 'Saved' })
           setInputText('')
           refresh()
         },
       })
     } catch (error) {
-      console.error(error)
-      Toast.show({ icon: 'fail', content: 'Parsing failed' })
+      Toast.show({ content: 'Format error' })
     } finally {
       setParsing(false)
     }
@@ -87,16 +82,15 @@ const HomePage = () => {
 
   const handleDelete = (id) => {
     Modal.confirm({
-      content: 'Are you sure you want to delete this record?',
+      title: 'Delete record?',
       confirmText: 'Delete',
-      cancelText: 'Cancel',
       danger: true,
       onConfirm: async () => {
         const { error } = await supabase.from('transactions').delete().eq('id', id)
         if (error) {
-          Toast.show({ icon: 'fail', content: 'Delete failed' })
+          Toast.show({ content: 'Error' })
         } else {
-          Toast.show({ icon: 'success', content: 'Deleted' })
+          Toast.show({ content: 'Deleted' })
           refresh()
         }
       },
@@ -104,85 +98,99 @@ const HomePage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#fcfcfd] pb-24 animate-fade-in font-sans">
+    <div className="min-h-screen bg-[#f8f9fa] pb-32 animate-m3 font-sans">
       <SafeArea position='top' />
       
-      {/* Header / Hero */}
-      <section className="px-6 pt-10 pb-12 bg-gradient-to-b from-blue-50/50 to-transparent rounded-b-[40px]">
-        <div className="flex justify-between items-start mb-8">
-          <div>
-            <h2 className="text-slate-400 text-sm font-semibold tracking-[0.2em] uppercase mb-1">Left for today</h2>
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-bold text-slate-400">¥</span>
-              <h1 className="text-7xl font-black text-slate-900 tracking-tighter drop-shadow-sm">
-                {dailyBudget}
-              </h1>
-            </div>
-          </div>
-          <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
-            <TrendingUp size={24} className="text-primary" />
-          </div>
+      <header className="px-6 pt-10 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-medium tracking-tight text-[#202124]">Allowance</h1>
+          <p className="text-[#5f6368] text-sm mt-1">{dayjs().format('dddd, MMM D')}</p>
         </div>
+        <div className="w-12 h-12 bg-[#e8f0fe] rounded-full flex items-center justify-center text-[#1a73e8]">
+          <DollarSign size={24} />
+        </div>
+      </header>
 
-        {/* Quick Stats Grid */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white/80 backdrop-blur-md p-4 rounded-[24px] border border-white shadow-sm">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Month Spent</p>
-            <p className="text-lg font-black text-slate-800">¥{totalExpenses.toFixed(2)}</p>
-          </div>
-          <div className="bg-white/80 backdrop-blur-md p-4 rounded-[24px] border border-white shadow-sm">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Days Left</p>
-            <p className="text-lg font-black text-slate-800">{remainingDays}d</p>
+      <section className="px-4 mt-8">
+        <div className="m3-card bg-white">
+          <div className="flex flex-col">
+            <span className="text-xs font-medium text-[#5f6368] uppercase tracking-wider mb-2">Available for Today</span>
+            <div className="flex items-baseline gap-1">
+              <span className="text-6xl font-medium text-[#1a73e8] tracking-tighter">¥{dailyBudget}</span>
+            </div>
+            
+            <div className="mt-8 grid grid-cols-2 gap-4">
+              <div className="bg-[#f8f9fa] p-4 rounded-2xl">
+                <div className="flex items-center gap-2 mb-1">
+                  <TrendingUp size={14} className="text-[#1a73e8]" />
+                  <span className="text-[10px] font-bold text-[#5f6368] uppercase">Spent</span>
+                </div>
+                <span className="text-lg font-medium text-[#202124]">¥{totalExpenses.toFixed(1)}</span>
+              </div>
+              <div className="bg-[#f8f9fa] p-4 rounded-2xl">
+                <div className="flex items-center gap-2 mb-1">
+                  <Calendar size={14} className="text-[#1a73e8]" />
+                  <span className="text-[10px] font-bold text-[#5f6368] uppercase">Days</span>
+                </div>
+                <span className="text-lg font-medium text-[#202124]">{remainingDays}d</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Floating Magic Bar */}
-      <div className="px-6 -mt-6 sticky top-4 z-10 transition-all duration-300">
-        <div className="glass flex items-center p-2 pl-5 rounded-[24px] shadow-[0_10px_30px_-10px_rgba(59,130,246,0.3)] border border-primary/10">
+      <div className="px-4 mt-8">
+        <div className="google-input flex items-center shadow-sm">
+          <Search size={20} className="text-[#5f6368]" />
           <Input
-            placeholder="Tell AI what you spent..."
-            className="flex-1 text-slate-700 font-medium placeholder:text-slate-400"
+            placeholder="Log expense (e.g. Lunch 40)"
+            className="flex-1 ml-3 text-[16px] placeholder:text-[#5f6368]/50"
             value={inputText}
             onChange={setInputText}
             onEnterPress={handleSend}
           />
-          <Button 
-            color='primary' 
-            className="ml-2 !h-11 !w-11 !rounded-2xl flex items-center justify-center !p-0 shadow-lg shadow-primary/20 bg-primary hover:scale-105 active:scale-95 transition-transform"
-            onClick={handleSend}
-            loading={parsing}
-          >
-            <Sparkles size={20} className="text-white" />
-          </Button>
+          {inputText && (
+            <button 
+              className="ml-2 w-10 h-10 bg-[#1a73e8] rounded-full flex items-center justify-center text-white"
+              onClick={handleSend}
+            >
+              <Plus size={20} strokeWidth={3} />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <section className="mt-10 px-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold text-slate-900">Recent Records</h2>
-          <Button size='mini' fill='none' className="!text-primary !font-bold text-sm">View Archive</Button>
-        </div>
+      <section className="mt-10 px-4">
+        <h2 className="text-sm font-medium text-[#5f6368] mb-4 px-2">Recent Activity</h2>
+        
+        <div className="space-y-4">
+          {groupedTransactions.map(([date, items]) => {
+            const isToday = date === dayjs().format('YYYY-MM-DD')
+            const displayDate = isToday ? 'Today' : dayjs(date).format('MMM D, dddd')
+            const dayTotal = items.reduce((sum, item) => sum + Number(item.amount), 0)
+            const isExpanded = expandedDates.includes(date)
 
-        <div className="space-y-3">
-          <Collapse defaultActiveKey={[dayjs().format('YYYY-MM-DD')]} className="record-collapse">
-            {groupedTransactions.map(([date, items]) => {
-              const isToday = date === dayjs().format('YYYY-MM-DD')
-              const displayDate = isToday ? 'Today' : dayjs(date).format('MMM DD, ddd')
-              const dayTotal = items.reduce((sum, item) => sum + Number(item.amount), 0)
-
-              return (
-                <Collapse.Panel 
-                  key={date} 
-                  title={
-                    <div className="flex justify-between items-baseline w-full">
-                      <span className="text-sm font-black text-slate-900 uppercase tracking-widest">{displayDate}</span>
-                      <span className="text-xs font-bold text-slate-400">¥{dayTotal.toFixed(2)}</span>
-                    </div>
-                  }
+            return (
+              <div key={date} className="bg-white rounded-[28px] overflow-hidden shadow-[0_1px_2px_rgba(60,64,67,0.3),0_1px_3px_1px_rgba(60,64,67,0.15)]">
+                <button 
+                  onClick={() => toggleDate(date)}
+                  className="w-full flex items-center justify-between p-5 group active:bg-[#f8f9fa] transition-colors"
                 >
-                  <div className="space-y-3 mt-2">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-1 rounded-full transition-colors ${isExpanded ? 'bg-[#e8f0fe] text-[#1a73e8]' : 'text-[#5f6368]'}`}>
+                      <ChevronDown 
+                        size={18} 
+                        strokeWidth={2.5}
+                        className={`transition-transform duration-300 ${isExpanded ? '' : '-rotate-90'}`}
+                      />
+                    </div>
+                    <span className="text-sm font-medium text-[#202124]">{displayDate}</span>
+                  </div>
+                  <span className="text-sm font-medium text-[#1a73e8]">¥{dayTotal.toFixed(1)}</span>
+                </button>
+
+                <div className={`transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
+                  <div className="divide-y divide-[#f1f3f4]">
                     {items.map(t => (
                       <SwipeAction
                         key={t.id}
@@ -190,45 +198,45 @@ const HomePage = () => {
                           {
                             key: 'delete',
                             text: (
-                              <div className="flex flex-col items-center justify-center h-full bg-red-50 px-4 text-red-500">
-                                <Trash2 size={16} />
-                                <span className="text-[10px] font-bold mt-1">Delete</span>
+                              <div className="flex flex-col items-center justify-center h-full w-20 text-white gap-1">
+                                <Trash2 size={22} strokeWidth={2.5} />
+                                <span className="text-[10px] font-bold uppercase tracking-tighter">Delete</span>
                               </div>
                             ),
-                            color: 'light',
                             onClick: () => handleDelete(t.id),
-                          },
+                          }
                         ]}
-                        className="rounded-[24px] overflow-hidden"
                       >
-                        <div 
-                          className="bg-white p-4 rounded-[24px] shadow-sm border border-slate-50 flex items-center justify-between hover:border-blue-100 transition-colors"
-                        >
+                        <div className="flex items-center justify-between p-5 bg-white active:bg-[#f8f9fa] transition-colors group">
                           <div className="flex items-center gap-4">
-                            <div className="bg-slate-100 p-3 rounded-2xl text-slate-500">
-                              <Plus size={20} />
+                            <div className="w-12 h-12 bg-[#f1f3f4] rounded-2xl flex items-center justify-center text-[#5f6368] group-active:bg-[#e8eaed] transition-colors">
+                              <span className="text-xs font-bold uppercase">{t.category[0]}</span>
                             </div>
-                            <div>
-                              <p className="font-bold text-slate-800 leading-tight mb-0.5">{t.description || t.category}</p>
-                              <p className="text-[10px] font-medium text-slate-400">{dayjs(t.date).format('HH:mm')} • {t.category}</p>
+                            <div className="flex flex-col">
+                              <span className="text-[15px] font-medium text-[#202124] truncate max-w-[150px]">
+                                {t.description || t.category}
+                              </span>
+                              <span className="text-[12px] text-[#5f6368]">{dayjs(t.date).format('h:mm A')}</span>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <p className="font-black text-slate-900">- ¥{t.amount}</p>
+                          <div className="flex flex-col items-end gap-1.5">
+                            <span className="text-[16px] font-medium text-[#202124]">¥{t.amount}</span>
+                            <span className="text-[10px] font-medium px-2.5 py-0.5 rounded-full bg-[#e8f0fe] text-[#1a73e8] tracking-tight">
+                              {t.category}
+                            </span>
                           </div>
                         </div>
                       </SwipeAction>
                     ))}
                   </div>
-                </Collapse.Panel>
-              )
-            })}
-          </Collapse>
+                </div>
+              </div>
+            )
+          })}
           
-          {transactions.length === 0 && (
-            <div className="py-20 text-center bg-slate-50/50 rounded-[32px] border-2 border-dashed border-slate-100">
-              < ReceiptText size={40} className="mx-auto text-slate-200 mb-3" />
-              <p className="text-slate-400 font-medium italic">Empty yet. Talk to AI to start.</p>
+          {transactions.length === 0 && !loading && (
+            <div className="py-20 text-center text-[#5f6368]/40">
+              <p className="text-sm">No activity recorded yet</p>
             </div>
           )}
         </div>

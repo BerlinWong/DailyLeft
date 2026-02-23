@@ -2,61 +2,92 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Google Sans fallback */
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@400;500;700&display=swap');
+
 :root {
-  --adm-color-primary: #6366f1;
-  --adm-border-radius-main: 16px;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background-color: #fcfcfd;
-  color: #1e293b;
+  --md-sys-color-primary: #1a73e8;
+  --md-sys-color-on-primary: #ffffff;
+  --md-sys-color-surface: #f8f9fa;
+  --md-sys-color-on-surface: #202124;
+  --md-sys-color-surface-variant: #eeeeee;
+  --md-sys-color-outline: #dadce0;
+  --md-sys-color-secondary-container: #e8f0fe;
+  --md-sys-color-on-secondary-container: #1967d2;
+  
+  font-family: 'Google Sans', 'Roboto', system-ui, -apple-system, sans-serif;
+  background-color: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
 }
 
 body {
   margin: 0;
   padding: 0;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--md-sys-color-surface);
   overflow-x: hidden;
 }
 
-/* Glassmorphism Refinement */
-.glass {
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+/* Material 3 Typography */
+h1, h2, h3, h4, h5 {
+  font-family: 'Google Sans', sans-serif;
+  color: var(--md-sys-color-on-surface);
+  margin: 0;
 }
 
-/* Premium Animations */
-@keyframes fadeIn {
+/* Base Tailwind Overrides & Custom Utilities */
+.m3-card {
+  background: white;
+  border-radius: 28px;
+  padding: 24px;
+  box-shadow: 0 1px 2px rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+}
+
+.google-input {
+  background: #f1f3f4;
+  border-radius: 28px;
+  padding: 12px 20px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.google-input:focus-within {
+  background: white;
+  box-shadow: 0 1px 2px rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+}
+
+/* Animation */
+@keyframes m3-fade-in {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-.animate-fade-in {
-  animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+.animate-m3 {
+  animation: m3-fade-in 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
-/* Premium Collapse / Accordion */
-.record-collapse {
-  --adm-border-color: transparent;
+/* Ant Design Mobile Reset (Maintaining only essential TabBar tweaks) */
+.adm-tab-bar {
+  background: white !important;
+  border-top: none !important;
+  box-shadow: 0 -1px 2px rgba(0,0,0,0.05);
+  height: 80px;
+}
+
+.adm-tab-bar-item-active {
+  color: var(--md-sys-color-primary) !important;
+}
+
+/* Ensure SwipeAction content handles full-height background correctly */
+.adm-swipe-action-content {
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+.adm-list-item {
+  padding: 0 !important;
   background: transparent !important;
 }
 
-.record-collapse .adm-collapse-panel-header {
-  padding: 12px 0;
-  background: transparent !important;
-}
-
-.record-collapse .adm-collapse-panel-header-active {
-  color: var(--adm-color-primary);
-}
-
-.record-collapse .adm-collapse-panel-content {
-  padding: 0;
-  background: transparent !important;
-}
-
-.record-collapse .adm-collapse-panel-header-arrow {
-  font-size: 14px;
-  color: #94a3b8;
+.adm-swipe-action {
+  background-color: #ff3b30 !important; /* iOS Destructive Red */
 }

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react'
-import { Form, Input, Button, Card, Toast, SafeArea } from 'antd-mobile'
+import { Form, Input, Button, Toast, SafeArea } from 'antd-mobile'
 import { useApp } from '../context/AppContext'
 import { supabase } from '../utils/supabase'
 import { getCurrentMonth } from '../utils/date'
-import { PiggyBank, Briefcase, History, ChevronRight } from 'lucide-react'
+import { Settings, CreditCard, PiggyBank, History, Info } from 'lucide-react'
 
 const SettingsPage = () => {
   const { monthlySettings, refresh } = useApp()
@@ -33,97 +33,112 @@ const SettingsPage = () => {
       
       if (error) throw error
       
-      Toast.show({ icon: 'success', content: 'Plan Saved' })
+      Toast.show({ content: 'Preferences updated', position: 'bottom' })
       refresh()
     } catch (error) {
-      console.error(error)
-      Toast.show({ icon: 'fail', content: 'Update failed' })
+      Toast.show({ content: 'Failed to update' })
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-[#fcfcfd] pb-24 animate-fade-in">
+    <div className="min-h-screen bg-[#f8f9fa] pb-32 animate-m3 font-sans">
       <SafeArea position='top' />
       
-      <header className="px-6 pt-12 pb-8">
-        <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-2">My Plan</h1>
-        <p className="text-slate-500 font-medium">Budgeting for {getCurrentMonth()}</p>
+      <header className="px-6 pt-10 mb-8">
+        <h1 className="text-3xl font-medium tracking-tight text-[#202124]">Configuration</h1>
+        <p className="text-[#5f6368] text-sm mt-1 flex items-center gap-2">
+          <Settings size={16} /> Budgeting for {getCurrentMonth()}
+        </p>
       </header>
 
-      <section className="px-6 flex-1">
-        <Form
-          form={form}
-          onFinish={onFinish}
-          footer={
-            <Button 
-              block 
-              type='submit' 
-              color='primary' 
-              loading={loading} 
-              className="!rounded-[20px] !h-14 font-black text-lg shadow-xl shadow-primary/20 bg-primary mt-6"
-            >
-              Update Budget Plan
-            </Button>
-          }
-          layout='vertical'
-          className="bg-transparent"
-        >
-          <div className="space-y-4">
-            <div className="bg-white p-2 rounded-[28px] shadow-sm border border-slate-100">
-              <Form.Item
-                name='income'
-                label={<div className="flex items-center gap-2 text-slate-500 font-bold uppercase text-[10px] tracking-widest pl-2"><Briefcase size={14} className="text-blue-500" /> Total Income</div>}
-                rules={[{ required: true, message: 'Missing amount' }]}
-                className="!border-none"
-              >
-                <Input type='number' placeholder='0.00' clearable className="font-black text-xl px-2 text-slate-800" />
-              </Form.Item>
+      <section className="px-4">
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          form.validateFields().then(values => onFinish(values));
+        }}>
+          <div className="space-y-6">
+            {/* Primary Parameters Card */}
+            <div className="bg-white rounded-[28px] p-6 shadow-[0_1px_2px_rgba(60,64,67,0.3),0_1px_3px_1px_rgba(60,64,67,0.15)]">
+              <h4 className="text-[11px] font-bold text-[#5f6368] uppercase tracking-widest mb-6 px-1">Primary Parameters</h4>
+              
+              <div className="space-y-6">
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium text-[#202124] flex items-center gap-2">
+                    <CreditCard size={18} className="text-[#1a73e8]" /> Monthly Income
+                  </label>
+                  <div className="flex items-center bg-[#f1f3f4] rounded-2xl px-4 py-3 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#1a73e8]/20 transition-all">
+                    <span className="text-[#5f6368] font-medium mr-2">¥</span>
+                    <Form.Item name="income" noStyle>
+                      <Input type="number" placeholder="0.00" className="bg-transparent border-none p-0 text-lg font-medium w-full focus:outline-none" />
+                    </Form.Item>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium text-[#202124] flex items-center gap-2">
+                    <PiggyBank size={18} className="text-[#34a853]" /> Savings Goal
+                  </label>
+                  <div className="flex items-center bg-[#f1f3f4] rounded-2xl px-4 py-3 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#1a73e8]/20 transition-all">
+                    <span className="text-[#5f6368] font-medium mr-2">¥</span>
+                    <Form.Item name="savings_goal" noStyle>
+                      <Input type="number" placeholder="0.00" className="bg-transparent border-none p-0 text-lg font-medium w-full focus:outline-none" />
+                    </Form.Item>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="bg-white p-2 rounded-[28px] shadow-sm border border-slate-100">
-              <Form.Item
-                name='savings_goal'
-                label={<div className="flex items-center gap-2 text-slate-500 font-bold uppercase text-[10px] tracking-widest pl-2"><PiggyBank size={14} className="text-emerald-500" /> Savings Goal</div>}
-                rules={[{ required: true, message: 'Missing amount' }]}
-                className="!border-none"
-              >
-                <Input type='number' placeholder='0.00' clearable className="font-black text-xl px-2 text-slate-800" />
-              </Form.Item>
+            {/* Adjustments Card */}
+            <div className="bg-white rounded-[28px] p-6 shadow-[0_1px_2px_rgba(60,64,67,0.3),0_1px_3px_1px_rgba(60,64,67,0.15)]">
+              <h4 className="text-[11px] font-bold text-[#5f6368] uppercase tracking-widest mb-6 px-1">Adjustments</h4>
+              
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-medium text-[#202124] flex items-center gap-2">
+                  <History size={18} className="text-[#ea4335]" /> Previous Expenses
+                </label>
+                <div className="flex items-center bg-[#f1f3f4] rounded-2xl px-4 py-3 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#1a73e8]/20 transition-all">
+                  <span className="text-[#5f6368] font-medium mr-2">¥</span>
+                  <Form.Item name="initial_spent" noStyle>
+                    <Input type="number" placeholder="0.00" className="bg-transparent border-none p-0 text-lg font-medium w-full focus:outline-none" />
+                  </Form.Item>
+                </div>
+                <p className="text-[11px] text-[#5f6368] mt-1 pl-1">Already spent before creating this budget</p>
+              </div>
             </div>
 
-            <div className="bg-white p-2 rounded-[28px] shadow-sm border border-slate-100">
-              <Form.Item
-                name='initial_spent'
-                label={<div className="flex items-center gap-2 text-slate-500 font-bold uppercase text-[10px] tracking-widest pl-2"><History size={14} className="text-amber-500" /> Spent Already</div>}
-                description="Expenses before using this tracker"
-                className="!border-none"
+            {/* Submit Button */}
+            <div className="px-2 pt-4">
+              <button 
+                type="submit"
+                disabled={loading}
+                className="w-full h-14 rounded-[28px] text-white bg-[#1a73e8] hover:bg-[#1a73e8]/90 active:scale-[0.98] transition-all font-medium disabled:opacity-50 shadow-md flex items-center justify-center gap-2"
               >
-                <Input type='number' placeholder='0.00' clearable className="font-black text-xl px-2 text-slate-800" />
-              </Form.Item>
+                {loading ? 'Processing...' : 'Save Settings'}
+              </button>
             </div>
           </div>
-        </Form>
+        </form>
 
-        {/* Info Card */}
-        <div className="mt-10 p-6 rounded-[32px] bg-indigo-900 text-white relative overflow-hidden shadow-2xl">
-          <div className="relative z-10">
-            <h3 className="text-lg font-bold mb-2 flex items-center gap-2">
-              How it works
-            </h3>
-            <p className="text-white/70 text-sm leading-relaxed font-medium">
-              We take your <span className="text-white">Income</span>, minus <span className="text-white">Savings</span>, minus <span className="text-white">Month Spent</span> (Records + Manual Offset), and divide the rest by <span className="text-white italic">days left</span>.
-            </p>
+        {/* Info Callout */}
+        <div className="mt-10 mx-2 p-6 bg-[#e8f0fe] rounded-[28px] border border-[#d2e3fc]">
+          <div className="flex gap-4">
+            <div className="bg-white p-2 h-fit rounded-xl text-[#1a73e8]">
+              <Info size={20} />
+            </div>
+            <div>
+              <h5 className="text-sm font-medium text-[#1967d2] mb-1 tracking-tight">How it works</h5>
+              <p className="text-xs text-[#1967d2]/80 leading-relaxed">
+                Daily Budget = (Income - Goal - Total Spent - Offset) / Days Remaining. 
+                Keep your parameters updated for accurate precision.
+              </p>
+            </div>
           </div>
-          {/* Decorative Circle */}
-          <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
-          <div className="absolute -top-10 -left-10 w-24 h-24 bg-blue-500/20 rounded-full blur-2xl" />
         </div>
 
-        <div className="mt-8 px-2 flex justify-between items-center text-slate-400 font-bold text-[10px] uppercase tracking-widest">
-          <span>DailyLeft v1.0</span>
-          <span className="flex items-center gap-1 cursor-pointer hover:text-primary transition-colors">Documentation <ChevronRight size={12} /></span>
+        <div className="mt-16 text-center text-[10px] text-[#5f6368] font-bold uppercase tracking-[0.2em] opacity-40">
+          DailyLeft v1.2.0 • Material Desgin
         </div>
       </section>
       

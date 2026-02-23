@@ -1,10 +1,19 @@
 import React, { useMemo } from 'react'
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts'
-import { Card, Skeleton, SafeArea, Tag } from 'antd-mobile'
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts'
+import { SafeArea } from 'antd-mobile'
 import { useApp } from '../context/AppContext'
-import { BarChart3, Wallet } from 'lucide-react'
+import { BarChart3, Wallet, PieChart as PieIcon, LineChart, Activity } from 'lucide-react'
 
-const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#64748b', '#06b6d4']
+const COLORS = [
+  '#1a73e8', // Google Blue
+  '#ea4335', // Google Red
+  '#fbbc04', // Google Yellow
+  '#34a853', // Google Green
+  '#fa7b17', // Orange
+  '#9334e6', // Purple
+  '#12b5cb', // Cyan
+  '#5f6368'  // Gray
+]
 
 const StatsPage = () => {
   const { transactions, loading, totalExpenses, monthlySettings } = useApp()
@@ -16,9 +25,8 @@ const StatsPage = () => {
       return acc
     }, {})
 
-    // Include manual offset from settings
     if (monthlySettings.initial_spent > 0) {
-      grouped['Manual Offset'] = (grouped['Manual Offset'] || 0) + Number(monthlySettings.initial_spent)
+      grouped['Offset'] = (grouped['Offset'] || 0) + Number(monthlySettings.initial_spent)
     }
 
     return Object.entries(grouped)
@@ -42,52 +50,55 @@ const StatsPage = () => {
       }, {})
 
     return last7Days.map(date => ({
-      date: date.split('-').slice(2).join('/'), // 02/23
+      date: date.split('-').slice(2).join('/'),
       amount: expensesByDay[date] || 0
     }))
   }, [transactions])
 
   if (loading) return (
-    <div className="p-10 space-y-8 animate-pulse bg-white min-h-screen">
-      <Skeleton.Title />
-      <div className="h-64 bg-slate-100 rounded-[32px]" />
-      <Skeleton.Paragraph lineCount={5} />
+    <div className="p-10 space-y-8 bg-[#f8f9fa] min-h-screen animate-pulse">
+      <div className="h-8 w-48 bg-[#eeeeee] rounded-full" />
+      <div className="h-4 w-32 bg-[#eeeeee] rounded-full" />
+      <div className="h-64 bg-white rounded-[28px] shadow-sm" />
+      <div className="space-y-4">
+        {[1, 2, 3, 4].map(i => (
+          <div key={i} className="h-16 bg-white rounded-2xl shadow-sm" />
+        ))}
+      </div>
     </div>
   )
 
   return (
-    <div className="min-h-screen bg-[#fcfcfd] pb-24 animate-fade-in">
+    <div className="min-h-screen bg-[#f8f9fa] pb-32 animate-m3 font-sans">
       <SafeArea position='top' />
       
-      <header className="px-6 pt-12 pb-8 flex justify-between items-end">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-1">Insights</h1>
-          <p className="text-slate-500 font-medium italic text-sm">Review your spending patterns</p>
-        </div>
-        <div className="bg-primary/10 p-3 rounded-2xl text-primary">
-          <BarChart3 size={24} />
-        </div>
+      <header className="px-6 pt-10 mb-8">
+        <h1 className="text-3xl font-medium tracking-tight text-[#202124]">Activity</h1>
+        <p className="text-[#5f6368] text-sm mt-1 flex items-center gap-2">
+          <Activity size={16} className="text-[#1a73e8]" /> Monthly usage overview
+        </p>
       </header>
 
-      <section className="px-6 space-y-8">
-        {/* Total Summary Mini Card */}
-        <div className="bg-white p-6 rounded-[32px] shadow-sm border border-slate-100 flex items-center gap-4">
-          <div className="bg-slate-100 p-4 rounded-2xl">
-            <Wallet size={24} className="text-slate-600" />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-0.5">Total Month Spend</p>
-            <p className="text-2xl font-black text-slate-900 leading-none mt-1">¥{totalExpenses.toFixed(2)}</p>
+      <section className="px-4 space-y-6">
+        {/* Total Surface */}
+        <div className="bg-[#e8f0fe] p-6 rounded-[28px] border border-[#d2e3fc]">
+          <div className="flex items-center gap-4">
+            <div className="bg-white p-3 rounded-2xl text-[#1a73e8] shadow-sm">
+              <Wallet size={24} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-[#1967d2] uppercase tracking-widest">Spent this month</p>
+              <p className="text-2xl font-medium text-[#1a73e8]">¥{totalExpenses.toFixed(1)}</p>
+            </div>
           </div>
         </div>
 
-        {/* Chart Card */}
-        <div className="bg-white p-6 rounded-[40px] shadow-lg border border-slate-50 relative overflow-hidden">
-          <h3 className="text-sm font-bold text-slate-800 mb-6 flex items-center gap-2">
-            Expense Distribution
+        {/* Charts Section */}
+        <div className="m3-card">
+          <h3 className="text-sm font-medium text-[#202124] mb-6 flex items-center gap-2">
+            <PieIcon size={18} className="text-[#1a73e8]" /> Breakdown
           </h3>
-          
-          <div className="h-[280px] w-full flex items-center justify-center">
+          <div className="h-[240px] w-full">
             {data.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -95,96 +106,84 @@ const StatsPage = () => {
                     data={data}
                     cx="50%"
                     cy="50%"
-                    innerRadius={75}
-                    outerRadius={100}
-                    strokeWidth={0}
-                    paddingAngle={8}
+                    innerRadius={65}
+                    outerRadius={90}
+                    stroke="none"
+                    paddingAngle={4}
                     dataKey="value"
-                    animationDuration={1500}
+                    isAnimationActive={true}
                   >
                     {data.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} cornerRadius={12} />
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip 
-                    contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', padding: '12px 20px' }}
-                    itemStyle={{ fontWeight: '800', fontSize: '14px' }}
+                    contentStyle={{ 
+                      borderRadius: '16px', 
+                      border: 'none', 
+                      boxShadow: '0 8px 24px rgba(60,64,67,0.15)',
+                      padding: '12px 16px',
+                      fontFamily: 'Google Sans, sans-serif'
+                    }}
+                    itemStyle={{ color: '#202124', fontWeight: 500 }}
                   />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="text-slate-300 font-medium italic py-10">No expenses recorded yet.</div>
+              <div className="flex items-center justify-center h-full text-[#5f6368]/30 italic text-sm">No records logged</div>
             )}
-            
-            {/* Center Text */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-8">
-              <span className="text-slate-400 text-[10px] font-bold uppercase">Top One</span>
-              <span className="text-xl font-black text-slate-800">{data[0]?.name || '-'}</span>
-            </div>
           </div>
         </div>
 
-        {/* Daily Spending Bar Chart */}
-        <div className="bg-white p-6 rounded-[40px] shadow-lg border border-slate-50">
-          <h3 className="text-sm font-bold text-slate-800 mb-6 flex items-center gap-2">
-            Daily Spending (Last 7 Days)
+        <div className="m3-card">
+          <h3 className="text-sm font-medium text-[#202124] mb-6 flex items-center gap-2">
+            <LineChart size={18} className="text-[#34a853]" /> 7-Day Trend
           </h3>
-          <div className="h-[200px] w-full">
+          <div className="h-[180px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={dailyData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f3f4" />
                 <XAxis 
                   dataKey="date" 
                   axisLine={false} 
                   tickLine={false} 
-                  tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} 
+                  tick={{ fontSize: 11, fill: '#5f6368', fontWeight: 500 }} 
                   dy={10}
                 />
                 <YAxis hide />
                 <Tooltip 
-                  cursor={{ fill: '#f8fafc', radius: 10 }}
-                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}
+                  cursor={{ fill: '#f1f3f4', radius: 8 }}
+                  contentStyle={{ 
+                    borderRadius: '12px', 
+                    border: 'none', 
+                    boxShadow: '0 8px 24px rgba(60,64,67,0.15)',
+                    padding: '12px 16px'
+                  }}
                 />
-                <Bar 
-                  dataKey="amount" 
-                  fill="#6366f1" 
-                  radius={[6, 6, 6, 6]} 
-                  barSize={20}
-                />
+                <Bar dataKey="amount" fill="#1a73e8" radius={[6, 6, 6, 6]} barSize={24} isAnimationActive={true} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Categories List */}
-        <div className="space-y-4">
-           <div className="flex justify-between items-center px-2">
-            <h2 className="text-lg font-bold text-slate-800">Categories Breakdown</h2>
-            <Tag color='primary' fill='outline' className="rounded-full text-[10px] px-3">Top {data.length}</Tag>
-          </div>
-          
-          <div className="grid gap-3">
+        {/* Categories Table Style */}
+        <div className="mt-8 px-2 pb-10">
+          <h4 className="text-[11px] font-bold text-[#5f6368] uppercase tracking-widest mb-4">Categories</h4>
+          <div className="space-y-2">
             {data.map((item, index) => (
               <div 
                 key={item.name} 
-                className="bg-white p-5 rounded-[24px] border border-slate-100 flex items-center justify-between shadow-sm active:scale-[0.98] transition-transform"
+                className="flex items-center justify-between p-4 bg-white rounded-[20px] shadow-sm hover:shadow-md transition-all group"
               >
                 <div className="flex items-center gap-4">
-                  <div 
-                    className="w-10 h-10 rounded-2xl flex items-center justify-center text-white font-black text-sm" 
-                    style={{ backgroundColor: COLORS[index % COLORS.length] }} 
-                  >
-                    {item.name[0]}
-                  </div>
-                  <div>
-                    <p className="font-bold text-slate-800 leading-tight mb-0.5">{item.name}</p>
-                    <p className="text-[10px] font-medium text-slate-400">
-                      {((item.value / data.reduce((s, i) => s + i.value, 0)) * 100).toFixed(1)}% of total
-                    </p>
-                  </div>
+                  <div className="w-4 h-4 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                  <span className="text-[15px] font-medium text-[#202124]">{item.name}</span>
                 </div>
-                <div className="text-right">
-                  <p className="font-black text-slate-900">¥{item.value.toFixed(2)}</p>
+                <div className="flex items-center gap-6">
+                   <div className="bg-[#f1f3f4] px-2 py-0.5 rounded-full">
+                     <span className="text-[#5f6368] text-[10px] font-bold tracking-tight">{((item.value / data.reduce((s, i) => s + i.value, 0)) * 100).toFixed(0)}%</span>
+                   </div>
+                   <span className="text-[16px] font-medium text-[#202124] w-20 text-right">¥{item.value.toFixed(0)}</span>
                 </div>
               </div>
             ))}
