@@ -35,3 +35,28 @@ body {
 .animate-fade-in {
   animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* Premium Collapse / Accordion */
+.record-collapse {
+  --adm-border-color: transparent;
+  background: transparent !important;
+}
+
+.record-collapse .adm-collapse-panel-header {
+  padding: 12px 0;
+  background: transparent !important;
+}
+
+.record-collapse .adm-collapse-panel-header-active {
+  color: var(--adm-color-primary);
+}
+
+.record-collapse .adm-collapse-panel-content {
+  padding: 0;
+  background: transparent !important;
+}
+
+.record-collapse .adm-collapse-panel-header-arrow {
+  font-size: 14px;
+  color: #94a3b8;
+}

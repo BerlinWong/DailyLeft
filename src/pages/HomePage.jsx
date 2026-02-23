@@ -1,5 +1,6 @@
-import React, { useState } from 'react'
-import { Card, Input, Button, Modal, List, Tag, Toast, SafeArea, SwipeAction } from 'antd-mobile'
+import React, { useState, useMemo } from 'react'
+import { Card, Input, Button, Modal, List, Tag, Toast, SafeArea, SwipeAction, Collapse } from 'antd-mobile'
+import dayjs from 'dayjs'
 import { useApp } from '../context/AppContext'
 import { calculateDailyBudget } from '../utils/budget'
 import { parseTransaction } from '../services/aiService'
@@ -7,7 +8,7 @@ import { supabase } from '../utils/supabase'
 import { Send, Plus, ReceiptText, Sparkles, TrendingUp, Trash2 } from 'lucide-react'
 
 const HomePage = () => {
-  const { monthlySettings, totalExpenses, remainingDays, transactions, loading } = useApp()
+  const { monthlySettings, totalExpenses, remainingDays, transactions, loading, refresh } = useApp()
   const [inputText, setInputText] = useState('')
   const [parsing, setParsing] = useState(false)
 
@@ -17,6 +18,16 @@ const HomePage = () => {
     totalExpenses,
     remainingDays
   )
+
+  const groupedTransactions = useMemo(() => {
+    const groups = transactions.reduce((acc, t) => {
+      const dateKey = dayjs(t.date).format('YYYY-MM-DD')
+      if (!acc[dateKey]) acc[dateKey] = []
+      acc[dateKey].push(t)
+      return acc
+    }, {})
+    return Object.entries(groups).sort((a, b) => dayjs(b[0]).isBefore(dayjs(a[0])) ? 1 : -1).reverse()
+  }, [transactions])
 
   const handleSend = async () => {
     if (!inputText.trim()) return
@@ -63,6 +74,7 @@ const HomePage = () => {
           if (error) throw error
           Toast.show({ icon: 'success', content: 'Success!' })
           setInputText('')
+          refresh()
         },
       })
     } catch (error) {
@@ -85,6 +97,7 @@ const HomePage = () => {
           Toast.show({ icon: 'fail', content: 'Delete failed' })
         } else {
           Toast.show({ icon: 'success', content: 'Deleted' })
+          refresh()
         }
       },
     })
@@ -153,37 +166,64 @@ const HomePage = () => {
         </div>
 
         <div className="space-y-3">
-          {transactions.slice(0, 10).map(t => (
-            <SwipeAction
-              key={t.id}
-              rightActions={[
-                {
-                  key: 'delete',
-                  text: <div className="flex items-center justify-center h-full px-4"><Trash2 size={20} /></div>,
-                  color: 'danger',
-                  onClick: () => handleDelete(t.id),
-                },
-              ]}
-              className="rounded-[24px]"
-            >
-              <div 
-                className="bg-white p-4 rounded-[24px] shadow-sm border border-slate-50 flex items-center justify-between hover:border-blue-100 transition-colors"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="bg-slate-100 p-3 rounded-2xl text-slate-500">
-                    <Plus size={20} />
+          <Collapse defaultActiveKey={[dayjs().format('YYYY-MM-DD')]} className="record-collapse">
+            {groupedTransactions.map(([date, items]) => {
+              const isToday = date === dayjs().format('YYYY-MM-DD')
+              const displayDate = isToday ? 'Today' : dayjs(date).format('MMM DD, ddd')
+              const dayTotal = items.reduce((sum, item) => sum + Number(item.amount), 0)
+
+              return (
+                <Collapse.Panel 
+                  key={date} 
+                  title={
+                    <div className="flex justify-between items-baseline w-full">
+                      <span className="text-sm font-black text-slate-900 uppercase tracking-widest">{displayDate}</span>
+                      <span className="text-xs font-bold text-slate-400">¥{dayTotal.toFixed(2)}</span>
+                    </div>
+                  }
+                >
+                  <div className="space-y-3 mt-2">
+                    {items.map(t => (
+                      <SwipeAction
+                        key={t.id}
+                        rightActions={[
+                          {
+                            key: 'delete',
+                            text: (
+                              <div className="flex flex-col items-center justify-center h-full bg-red-50 px-4 text-red-500">
+                                <Trash2 size={16} />
+                                <span className="text-[10px] font-bold mt-1">Delete</span>
+                              </div>
+                            ),
+                            color: 'light',
+                            onClick: () => handleDelete(t.id),
+                          },
+                        ]}
+                        className="rounded-[24px] overflow-hidden"
+                      >
+                        <div 
+                          className="bg-white p-4 rounded-[24px] shadow-sm border border-slate-50 flex items-center justify-between hover:border-blue-100 transition-colors"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="bg-slate-100 p-3 rounded-2xl text-slate-500">
+                              <Plus size={20} />
+                            </div>
+                            <div>
+                              <p className="font-bold text-slate-800 leading-tight mb-0.5">{t.description || t.category}</p>
+                              <p className="text-[10px] font-medium text-slate-400">{dayjs(t.date).format('HH:mm')} • {t.category}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-black text-slate-900">- ¥{t.amount}</p>
+                          </div>
+                        </div>
+                      </SwipeAction>
+                    ))}
                   </div>
-                  <div>
-                    <p className="font-bold text-slate-800 leading-tight mb-0.5">{t.description || t.category}</p>
-                    <p className="text-[10px] font-medium text-slate-400">{new Date(t.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {t.category}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-black text-slate-900">- ¥{t.amount}</p>
-                </div>
-              </div>
-            </SwipeAction>
-          ))}
+                </Collapse.Panel>
+              )
+            })}
+          </Collapse>
           
           {transactions.length === 0 && (
             <div className="py-20 text-center bg-slate-50/50 rounded-[32px] border-2 border-dashed border-slate-100">

@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react'
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts'
 import { Card, Skeleton, SafeArea, Tag } from 'antd-mobile'
 import { useApp } from '../context/AppContext'
 import { BarChart3, Wallet } from 'lucide-react'
@@ -25,6 +25,27 @@ const StatsPage = () => {
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value)
   }, [transactions, monthlySettings.initial_spent])
+
+  const dailyData = useMemo(() => {
+    const last7Days = [...Array(7)].map((_, i) => {
+      const d = new Date()
+      d.setDate(d.getDate() - i)
+      return d.toISOString().split('T')[0]
+    }).reverse()
+
+    const expensesByDay = transactions
+      .filter(t => t.type === 'expense')
+      .reduce((acc, curr) => {
+        const date = curr.date.split('T')[0]
+        acc[date] = (acc[date] || 0) + Number(curr.amount)
+        return acc
+      }, {})
+
+    return last7Days.map(date => ({
+      date: date.split('-').slice(2).join('/'), // 02/23
+      amount: expensesByDay[date] || 0
+    }))
+  }, [transactions])
 
   if (loading) return (
     <div className="p-10 space-y-8 animate-pulse bg-white min-h-screen">
@@ -100,6 +121,38 @@ const StatsPage = () => {
               <span className="text-slate-400 text-[10px] font-bold uppercase">Top One</span>
               <span className="text-xl font-black text-slate-800">{data[0]?.name || '-'}</span>
             </div>
+          </div>
+        </div>
+
+        {/* Daily Spending Bar Chart */}
+        <div className="bg-white p-6 rounded-[40px] shadow-lg border border-slate-50">
+          <h3 className="text-sm font-bold text-slate-800 mb-6 flex items-center gap-2">
+            Daily Spending (Last 7 Days)
+          </h3>
+          <div className="h-[200px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={dailyData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis 
+                  dataKey="date" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} 
+                  dy={10}
+                />
+                <YAxis hide />
+                <Tooltip 
+                  cursor={{ fill: '#f8fafc', radius: 10 }}
+                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}
+                />
+                <Bar 
+                  dataKey="amount" 
+                  fill="#6366f1" 
+                  radius={[6, 6, 6, 6]} 
+                  barSize={20}
+                />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
 

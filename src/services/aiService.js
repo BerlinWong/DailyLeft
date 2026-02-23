@@ -15,18 +15,24 @@ export const parseTransaction = async (text) => {
 
   const currentDateTime = dayjs().format('YYYY-MM-DD HH:mm:ss')
   
-  const systemPrompt = `Extract transaction data from the user's text.
-Return ONLY a strict JSON object with these fields:
-- amount: number (positive)
-- category: one of ['Food', 'Transport', 'Shopping', 'Housing', 'Entertainment', 'Medical', 'Salary', 'Other']
-- description: string (brief summary)
-- date: ISO 8601 string
+  const systemPrompt = `Extract transaction data.
+Current Local Time: ${currentDateTime}
 
-Current DateTime: ${currentDateTime}
+Return ONLY a strict JSON object:
+- amount: number
+- category: ['Food', 'Transport', 'Shopping', 'Housing', 'Entertainment', 'Medical', 'Salary', 'Other']
+- description: string
+- date: string (format: YYYY-MM-DD HH:mm:ss)
+
 Rules:
-- If category is unclear, use 'Other'.
-- If date is not mentioned, use current date.
-- No markdown, no explanation, just JSON.`
+1. The 'Current Local Time' provided is the user's actual time. Use it as the base for relative dates (e.g., 'today', 'yesterday').
+2. DEFAULT TIMES for keywords:
+   - 'Breakfast' (早饭/早餐) -> 08:30:00
+   - 'Lunch' (午饭/午餐/中午) -> 12:00:00
+   - 'Dinner' (晚饭/晚餐/晚上) -> 19:00:00
+3. If user says 'Midday 12:00', use 12:00:00 on the calculated date.
+4. Output 'date' in the local timezone format 'YYYY-MM-DD HH:mm:ss'. Do NOT use UTC unless specified.
+5. No markdown, no explanation.`
 
   try {
     const response = await axios.post(API_URL, {
@@ -53,7 +59,7 @@ Rules:
       amount: Number(result.amount) || 0,
       category: result.category || 'Other',
       description: result.description || text,
-      date: result.date || new Date().toISOString()
+      date: result.date ? dayjs(result.date).toISOString() : dayjs().toISOString()
     }
   } catch (error) {
     console.error('AI Parsing Error:', error)
