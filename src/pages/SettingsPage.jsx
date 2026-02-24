@@ -2,11 +2,14 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Form, Input, Button, Toast, SafeArea } from 'antd-mobile'
 import { useApp } from '../context/AppContext'
+import { useLang } from '../context/LangContext'
+import { t } from '../i18n'
 import { supabase } from '../utils/supabase'
 import { Settings, CreditCard, PiggyBank, History, Info } from 'lucide-react'
 
 const SettingsPage = () => {
   const { monthlySettings, refresh, cycleKey, user, signOut } = useApp()
+  const { lang, toggleLang } = useLang()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [form] = Form.useForm()
@@ -42,11 +45,11 @@ const SettingsPage = () => {
       
       if (error) throw error
       
-      Toast.show({ content: 'Policy Updated' })
+      Toast.show({ content: t(lang,'policy_updated') })
       refresh()
       navigate('/', { replace: true })
     } catch (error) {
-      Toast.show({ content: 'Sync failed' })
+      Toast.show({ content: t(lang,'sync_failed') })
     } finally {
       setLoading(false)
     }
@@ -60,21 +63,29 @@ const SettingsPage = () => {
       
       <header className="px-8 pt-12 mb-10 flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <h1 className="text-4xl font-bold tracking-tight text-ios-primary">Control</h1>
-          {user ? (
-            <div className="flex items-center gap-3">
-              <span className="text-ios-secondary text-sm">{user.username}</span>
-              <button
-                onClick={signOut}
-                className="text-xs font-semibold text-[#ff3b30]"
-              >
-                退出
-              </button>
-            </div>
-          ) : null}
+          <h1 className="text-4xl font-bold tracking-tight text-ios-primary">{t(lang,'control')}</h1>
+          <div className="flex items-center gap-4">
+            {user && (
+              <div className="flex items-center gap-3">
+                <span className="text-ios-secondary text-sm">{user.username}</span>
+                <button
+                  onClick={signOut}
+                  className="text-xs font-semibold text-[#ff3b30]"
+                >
+                  {t(lang,'logout')}
+                </button>
+              </div>
+            )}
+            <button
+              onClick={toggleLang}
+              className="text-xs px-2 py-1 border rounded"
+            >
+              {lang === 'zh' ? 'EN' : '中'}
+            </button>
+          </div>
         </div>
         <p className="text-ios-secondary text-sm font-semibold mt-1 uppercase tracking-widest flex items-center gap-2">
-          <Settings size={14} className="text-[#007aff]" /> System Calibration
+          <Settings size={14} className="text-[#007aff]" /> {t(lang,'systemCalibration')}
         </p>
       </header>
 
@@ -108,7 +119,7 @@ const SettingsPage = () => {
                 </div>
                 <div className="flex flex-col gap-3">
                   <label className="text-[17px] font-bold text-ios-primary/70 flex items-center gap-2 pl-1">
-                    <Settings size={20} className="text-[#007aff]" /> Cycle Start Day
+                    <Settings size={20} className="text-[#007aff]" /> {t(lang,'cycle_start_day')}
                   </label>
                   <div className="bg-black/5 dark:bg-white/5 focus-within:bg-white dark:focus-within:bg-white/10 focus-within:shadow-xl rounded-[28px] p-6 border border-white/10 transition-all duration-500">
                     <Form.Item name="cycle_start_day" noStyle>

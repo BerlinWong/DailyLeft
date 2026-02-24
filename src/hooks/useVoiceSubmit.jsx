@@ -3,10 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { Modal, Toast } from 'antd-mobile'
 import { parseTransaction } from '../services/aiService'
 import { supabase } from '../utils/supabase'
+import { useLang } from '../context/LangContext'
+import { t } from '../i18n'
 import { useApp } from '../context/AppContext'
 
 export const useVoiceSubmit = () => {
   const { refresh, user } = useApp()
+  const { lang } = useLang()
   const navigate = useNavigate()
   const [isListening, setIsListening]   = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
@@ -16,7 +19,7 @@ export const useVoiceSubmit = () => {
   const startListening = useCallback(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
     if (!SpeechRecognition) {
-      Toast.show({ content: '当前浏览器不支持语音识别' })
+      Toast.show({ content: t(lang,'browser_no_speech') })
       return
     }
     transcriptRef.current = ''
@@ -28,7 +31,7 @@ export const useVoiceSubmit = () => {
 
     rec.onstart  = () => setIsListening(true)
     rec.onerror  = (e) => {
-      if (e.error !== 'aborted') Toast.show({ content: `麦克风: ${e.error}` })
+      if (e.error !== 'aborted') Toast.show({ content: `${t(lang,'mic_error')}: ${e.error}` })
       setIsListening(false)
     }
     rec.onresult = (e) => {
@@ -49,12 +52,12 @@ export const useVoiceSubmit = () => {
 
     const text = transcriptRef.current.trim()
     if (!text) {
-      Toast.show({ content: '没有听到内容，再试试 🎤' })
+      Toast.show({ content: t(lang,'no_audio') })
       return
     }
 
     setIsProcessing(true)
-    const toast = Toast.show({ icon: 'loading', content: '解析中…', duration: 0, maskClickable: false })
+    const toast = Toast.show({ icon: 'loading', content: t(lang,'processing'), duration: 0, maskClickable: false })
 
     try {
       const parsed = await parseTransaction(text)
@@ -90,7 +93,7 @@ export const useVoiceSubmit = () => {
         cancelText: '取消',
         onConfirm: async () => {
           if (!user) {
-            Toast.show({ content: '请先登录' })
+            Toast.show({ content: t(lang,'please_login') })
             return
           }
           const { error } = await supabase.from('transactions').insert([{
@@ -103,14 +106,14 @@ export const useVoiceSubmit = () => {
             date: parsed.date,
           }])
           if (error) throw error
-          Toast.show({ content: '已记录 ✓', icon: 'success' })
+          Toast.show({ content: t(lang,'record_synced'), icon: 'success' })
           refresh()
           navigate('/')
         },
       })
     } catch {
       toast.close()
-      Toast.show({ content: '解析失败，再试一次', icon: 'fail' })
+      Toast.show({ content: t(lang,'parse_failed'), icon: 'fail' })
     } finally {
       setIsProcessing(false)
     }

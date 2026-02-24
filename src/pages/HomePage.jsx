@@ -2,6 +2,8 @@ import React, { useState, useMemo, useRef } from 'react'
 import { Input, Modal, Toast, SafeArea, SwipeAction } from 'antd-mobile'
 import dayjs from 'dayjs'
 import { useApp } from '../context/AppContext'
+import { useLang } from '../context/LangContext'
+import { t } from '../i18n'
 import { parseTransaction } from '../services/aiService'
 import { supabase } from '../utils/supabase'
 import { ArrowRight, Trash2, DollarSign, ChevronDown } from 'lucide-react'
@@ -21,6 +23,7 @@ const HomePage = () => {
     dailyAllowanceSnapshot,
     todayExpenses,
   } = useApp()
+  const { lang } = useLang()
   const [inputText, setInputText] = useState('')
   const [parsing, setParsing] = useState(false)
   const [expandedDates, setExpandedDates] = useState([dayjs().format('YYYY-MM-DD')])
@@ -135,7 +138,7 @@ const HomePage = () => {
       
       <header className="px-8 pt-12 flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-bold tracking-tight text-ios-primary">Today</h1>
+          <h1 className="text-4xl font-bold tracking-tight text-ios-primary">{t(lang,'today')}</h1>
           <p className="text-ios-secondary text-sm font-semibold mt-1 uppercase tracking-widest">
             {dayjs().format('dddd, MMM D')}
           </p>

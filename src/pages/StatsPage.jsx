@@ -1,6 +1,8 @@
 import React, { useMemo } from 'react'
 import { SafeArea } from 'antd-mobile'
 import { useApp } from '../context/AppContext'
+import { useLang } from '../context/LangContext'
+import { t } from '../i18n'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell, PieChart as RePieChart, Pie } from 'recharts'
 import dayjs from 'dayjs'
 import { BarChart3, PieChart, Activity, Target } from 'lucide-react'
@@ -8,6 +10,7 @@ import MeasuredChart from '../components/MeasuredChart'
 
 const StatsPage = () => {
   const { transactions, recentTransactions, loading, totalExpenses } = useApp()
+  const { lang } = useLang()
 
   const dailyStats = useMemo(() => {
     const last7Days = Array.from({ length: 7 }, (_, i) => {
@@ -64,9 +67,9 @@ const StatsPage = () => {
       <SafeArea position='top' />
       
       <header className="px-8 pt-12 mb-10">
-        <h1 className="text-4xl font-bold tracking-tight text-ios-primary">Analytics</h1>
+        <h1 className="text-4xl font-bold tracking-tight text-ios-primary">{t(lang,'analytics')}</h1>
         <p className="text-ios-secondary text-sm font-semibold mt-1 uppercase tracking-widest flex items-center gap-2">
-          <Activity size={14} className="text-[#34c759]" /> Performance overview
+          <Activity size={14} className="text-[#34c759]" /> {t(lang,'performance_overview') || 'Performance overview'}
         </p>
       </header>
 

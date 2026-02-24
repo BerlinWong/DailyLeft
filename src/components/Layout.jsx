@@ -3,10 +3,13 @@ import { useNavigate, useLocation, Outlet } from 'react-router-dom'
 import { Home, BarChart2, Settings, Mic, MicOff, X, Menu } from 'lucide-react'
 import { useVoiceSubmit } from '../hooks/useVoiceSubmit'
 
-const tabs = [
-  { key: '/',         title: 'Today',     icon: <Home size={20} /> },
-  { key: '/stats',    title: 'Analytics', icon: <BarChart2 size={20} /> },
-  { key: '/settings', title: 'System',    icon: <Settings size={20} /> },
+import { useLang } from '../context/LangContext'
+import { t } from '../i18n'
+
+const tabs = (lang) => [
+  { key: '/',         title: t(lang,'today'),     icon: <Home size={20} /> },
+  { key: '/stats',    title: t(lang,'analytics'), icon: <BarChart2 size={20} /> },
+  { key: '/settings', title: t(lang,'control'),    icon: <Settings size={20} /> },
 ]
 
 const BALL  = 52
@@ -71,6 +74,8 @@ const Layout = () => {
   const { pathname }  = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
   const { isListening, isProcessing, toggleListening } = useVoiceSubmit()
+  const { lang, toggleLang } = useLang()
+  const tabList = tabs(lang)
 
   // Close menu on nav
   useEffect(() => { setMenuOpen(false) }, [pathname])
@@ -171,7 +176,7 @@ const Layout = () => {
             className={`absolute bottom-[calc(100%+12px)] flex flex-col gap-2.5 animate-fluid
               ${menuOnRight ? 'right-0 items-end' : 'left-0 items-start'}`}
           >
-            {[...tabs].reverse().map((tab) => {
+            {[...tabList].reverse().map((tab) => {
               const active = pathname === tab.key
               return (
                 <div
@@ -195,6 +200,7 @@ const Layout = () => {
                 </div>
               )
             })}
+            {/* language toggle removed from menu (kept in Settings header) */}
           </div>
         )}
 
@@ -212,7 +218,7 @@ const Layout = () => {
           {menuOpen
             ? <X    size={20} strokeWidth={2.5} className="text-ios-primary" />
             : React.cloneElement(
-                tabs.find(t => t.key === pathname)?.icon || tabs[0].icon,
+                tabList.find(t => t.key === pathname)?.icon || tabList[0].icon,
                 { strokeWidth: 2.5, className: 'text-ios-primary dark:text-white' }
               )}
         </button>

@@ -236,3 +236,71 @@ body::before {
 .adm-list-item::after {
   display: none !important;
 }
+
+/* ===================== Loading indicator contrast fixes ===================== */
+/* Ensure spinner/toast loading indicators have good contrast in light theme
+   and remain visible in dark theme. We target both the ADM classes and
+   possible theme-class toggles ('.dark' / '.light'). */
+.adm-spin-loading,
+.adm-toast-loading {
+  color: rgba(0, 0, 0, 0.9) !important; /* dark color on light theme */
+}
+.adm-spin-loading svg,
+.adm-toast-loading svg {
+  stroke: currentColor !important;
+  fill: currentColor !important;
+}
+
+/* Prefer light spinner in dark mode */
+@media (prefers-color-scheme: dark) {
+  .adm-spin-loading,
+  .adm-toast-loading {
+    color: rgba(255, 255, 255, 0.92) !important; /* light color in dark theme */
+  }
+}
+
+/* Also support explicit .dark/.light classes on the root element */
+.dark .adm-spin-loading,
+.dark .adm-toast-loading {
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+.light .adm-spin-loading,
+.light .adm-toast-loading {
+  color: rgba(0, 0, 0, 0.9) !important;
+}
+
+/* Additional selectors for ADM internal spinner elements */
+.adm-spin-loading-icon,
+.adm-spin-loading-svg,
+.adm-toast-loading-icon,
+.adm-toast-loading-svg,
+.adm-spin-dot {
+  color: inherit !important;
+}
+
+/* Target common SVG elements inside the spinner */
+/* Make SVG spinners hollow (stroke-based) rather than filled shapes */
+.adm-spin-loading svg circle,
+.adm-spin-loading svg path,
+.adm-spin-loading svg rect,
+.adm-spin-loading-svg circle,
+.adm-spin-loading-svg path,
+.adm-spin-loading-svg rect,
+.adm-toast-loading svg circle,
+.adm-toast-loading svg path,
+.adm-toast-loading svg rect {
+  stroke: currentColor !important;
+  fill: none !important; /* remove solid fill to avoid black blob */
+  stroke-width: 2 !important;
+  stroke-linecap: round !important;
+  opacity: 1 !important;
+}
+
+/* Ensure animated dots (if used) are visible */
+.adm-spin-dot {
+  background-color: currentColor !important;
+  opacity: 1 !important;
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
+}
