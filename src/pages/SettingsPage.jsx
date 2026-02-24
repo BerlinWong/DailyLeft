@@ -47,7 +47,7 @@ const SettingsPage = () => {
   if (!monthlySettings) return null;
 
   return (
-    <div className="min-h-screen pb-40 animate-fluid font-sans">
+    <div className="min-h-screen pb-10 animate-fluid font-sans">
       <SafeArea position='top' />
       
       <header className="px-8 pt-12 mb-10">
@@ -153,6 +153,23 @@ const SettingsPage = () => {
                 Settings are synced instantly across your account. Changes to income or goals will immediately recalculate your remaining daily burn rate.
               </p>
             </div>
+            
+          </div>
+        </div>
+
+        <div className="mt-2 p-8 liquid-glass rounded-[40px] relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-[#007aff]/5 rounded-full blur-3xl -mr-16 -mt-16 transition-transform duration-1000 group-hover:scale-150" />
+          <div className="flex gap-6 relative z-10">
+            <div className="bg-white/10 dark:bg-white/5 backdrop-blur-md p-4 h-fit rounded-[22px] text-[#007aff] shadow-sm border border-white/20">
+              <Info size={26} />
+            </div>
+            <div>
+              <h5 className="text-[18px] font-black text-ios-primary/80 mb-2">计划</h5>
+              <p className="text-[14px] font-medium text-ios-secondary leading-relaxed">
+                对于每个月10号，你需要往里面输入当月的收入和储蓄目标，目标里需要加上房租预留，剩下的就是你可以自由支配的钱了。
+              </p>
+            </div>
+            
           </div>
         </div>
 
