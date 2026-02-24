@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Form, Input, Button, Toast, SafeArea } from 'antd-mobile'
 import { useApp } from '../context/AppContext'
 import { supabase } from '../utils/supabase'
-import { getCurrentMonth } from '../utils/date'
 import { Settings, CreditCard, PiggyBank, History, Info } from 'lucide-react'
 
 const SettingsPage = () => {
-  const { monthlySettings, refresh } = useApp()
+  const { monthlySettings, refresh, cycleKey, user, signOut } = useApp()
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [form] = Form.useForm()
 
@@ -15,28 +16,35 @@ const SettingsPage = () => {
       form.setFieldsValue({
         income: monthlySettings.income,
         savings_goal: monthlySettings.savings_goal,
-        initial_spent: monthlySettings.initial_spent || 0
+        initial_spent: monthlySettings.initial_spent || 0,
+        cycle_start_day: monthlySettings.cycle_start_day || 11
       })
     }
   }, [monthlySettings, form])
 
   const onFinish = async (values) => {
     setLoading(true)
-    const currentMonth = getCurrentMonth()
     try {
+      if (!user) {
+        Toast.show({ content: '请先登录' })
+        return
+      }
       const { error } = await supabase
         .from('monthly_settings')
         .upsert({ 
-          month: currentMonth, 
+          user_id: user.id,
+          month: cycleKey, 
           income: parseFloat(values.income) || 0, 
           savings_goal: parseFloat(values.savings_goal) || 0,
-          initial_spent: parseFloat(values.initial_spent) || 0
-        }, { onConflict: 'month' })
+          initial_spent: parseFloat(values.initial_spent) || 0,
+          cycle_start_day: parseInt(values.cycle_start_day, 10) || 11
+        }, { onConflict: 'user_id,month' })
       
       if (error) throw error
       
       Toast.show({ content: 'Policy Updated' })
       refresh()
+      navigate('/', { replace: true })
     } catch (error) {
       Toast.show({ content: 'Sync failed' })
     } finally {
@@ -50,8 +58,21 @@ const SettingsPage = () => {
     <div className="min-h-screen pb-10 animate-fluid font-sans">
       <SafeArea position='top' />
       
-      <header className="px-8 pt-12 mb-10">
-        <h1 className="text-4xl font-bold tracking-tight text-ios-primary">Control</h1>
+      <header className="px-8 pt-12 mb-10 flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <h1 className="text-4xl font-bold tracking-tight text-ios-primary">Control</h1>
+          {user ? (
+            <div className="flex items-center gap-3">
+              <span className="text-ios-secondary text-sm">{user.username}</span>
+              <button
+                onClick={signOut}
+                className="text-xs font-semibold text-[#ff3b30]"
+              >
+                退出
+              </button>
+            </div>
+          ) : null}
+        </div>
         <p className="text-ios-secondary text-sm font-semibold mt-1 uppercase tracking-widest flex items-center gap-2">
           <Settings size={14} className="text-[#007aff]" /> System Calibration
         </p>
@@ -83,6 +104,22 @@ const SettingsPage = () => {
                         />
                       </Form.Item>
                     </div>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-3">
+                  <label className="text-[17px] font-bold text-ios-primary/70 flex items-center gap-2 pl-1">
+                    <Settings size={20} className="text-[#007aff]" /> Cycle Start Day
+                  </label>
+                  <div className="bg-black/5 dark:bg-white/5 focus-within:bg-white dark:focus-within:bg-white/10 focus-within:shadow-xl rounded-[28px] p-6 border border-white/10 transition-all duration-500">
+                    <Form.Item name="cycle_start_day" noStyle>
+                      <Input
+                        type="number"
+                        placeholder="11"
+                        min={1}
+                        max={28}
+                        className="bg-transparent border-none p-0 text-3xl font-bold text-ios-primary w-full" 
+                      />
+                    </Form.Item>
                   </div>
                 </div>
 
@@ -166,7 +203,7 @@ const SettingsPage = () => {
             <div>
               <h5 className="text-[18px] font-black text-ios-primary/80 mb-2">计划</h5>
               <p className="text-[14px] font-medium text-ios-secondary leading-relaxed">
-                对于每个月10号，你需要往里面输入当月的收入和储蓄目标，目标里需要加上房租预留，剩下的就是你可以自由支配的钱了。
+                对于每个月11号，你需要往里面输入当月的收入和储蓄目标，目标里需要加上房租预留，剩下的就是你可以自由支配的钱了。
               </p>
             </div>
             
@@ -177,6 +214,7 @@ const SettingsPage = () => {
            <div className="h-0.5 w-12 bg-ios-primary rounded-full mb-2" />
            <span className="text-[10px] font-black uppercase tracking-[0.5em] text-ios-primary">System OS 2.0.4</span>
         </div>
+
       </section>
       
       <SafeArea position='bottom' />

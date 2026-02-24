@@ -4,9 +4,11 @@ import { ConfigProvider } from 'antd-mobile'
 import enUS from 'antd-mobile/es/locales/en-US'
 import { AppProvider } from './context/AppContext'
 import Layout from './components/Layout'
+import RequireAuth from './components/RequireAuth'
 import HomePage from './pages/HomePage'
 import StatsPage from './pages/StatsPage'
 import SettingsPage from './pages/SettingsPage'
+import AuthPage from './pages/AuthPage'
 import './index.css'
 
 function App() {
@@ -15,7 +17,8 @@ function App() {
       <AppProvider>
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Layout />}>
+            <Route path="/auth" element={<AuthPage />} />
+            <Route path="/" element={<RequireAuth><Layout /></RequireAuth>}>
               <Route index element={<HomePage />} />
               <Route path="stats" element={<StatsPage />} />
               <Route path="settings" element={<SettingsPage />} />

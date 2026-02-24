@@ -6,7 +6,7 @@ import { supabase } from '../utils/supabase'
 import { useApp } from '../context/AppContext'
 
 export const useVoiceSubmit = () => {
-  const { refresh } = useApp()
+  const { refresh, user } = useApp()
   const navigate = useNavigate()
   const [isListening, setIsListening]   = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
@@ -89,7 +89,12 @@ export const useVoiceSubmit = () => {
         confirmText: <span className="font-bold">保存</span>,
         cancelText: '取消',
         onConfirm: async () => {
+          if (!user) {
+            Toast.show({ content: '请先登录' })
+            return
+          }
           const { error } = await supabase.from('transactions').insert([{
+            user_id: user.id,
             amount: parsed.amount,
             category: parsed.category,
             description: parsed.description,
@@ -109,7 +114,7 @@ export const useVoiceSubmit = () => {
     } finally {
       setIsProcessing(false)
     }
-  }, [refresh, navigate])
+  }, [refresh, navigate, user])
 
   /** Single-tap toggle: first tap = start, second tap = stop + submit */
   const toggleListening = useCallback(() => {

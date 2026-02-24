@@ -2,25 +2,30 @@ import React, { useState, useMemo, useRef } from 'react'
 import { Input, Modal, Toast, SafeArea, SwipeAction } from 'antd-mobile'
 import dayjs from 'dayjs'
 import { useApp } from '../context/AppContext'
-import { calculateDailyBudget } from '../utils/budget'
 import { parseTransaction } from '../services/aiService'
 import { supabase } from '../utils/supabase'
-import { ArrowRight, Trash2, Calendar, TrendingUp, DollarSign, ChevronDown } from 'lucide-react'
+import { ArrowRight, Trash2, DollarSign, ChevronDown } from 'lucide-react'
 
 const HomePage = () => {
-  const { monthlySettings, totalExpenses, remainingDays, transactions, loading, refresh } = useApp()
+  const {
+    transactions,
+    loading,
+    refresh,
+    user,
+    monthlyAvailable,
+    dailyAvailable,
+    cycleDailyAllowance,
+    cycleDailyDelta,
+    baselineDailyAllowance,
+    remainingDays,
+    dailyAllowanceSnapshot,
+    todayExpenses,
+  } = useApp()
   const [inputText, setInputText] = useState('')
   const [parsing, setParsing] = useState(false)
   const [expandedDates, setExpandedDates] = useState([dayjs().format('YYYY-MM-DD')])
   const [detailTx, setDetailTx] = useState(null)
   const inputRef = useRef(null)
-
-  const dailyBudget = calculateDailyBudget(
-    monthlySettings.income,
-    monthlySettings.savings_goal,
-    totalExpenses,
-    remainingDays
-  )
 
   const groupedTransactions = useMemo(() => {
     const groups = transactions.reduce((acc, t) => {
@@ -72,7 +77,12 @@ const HomePage = () => {
         confirmText: <span className="font-bold">Save</span>,
         cancelText: 'Cancel',
         onConfirm: async () => {
+          if (!user) {
+            Toast.show({ content: '请先登录' })
+            return
+          }
           const { error } = await supabase.from('transactions').insert([{
+            user_id: user.id,
             amount: parsed.amount,
             category: parsed.category,
             description: parsed.description,
@@ -141,32 +151,55 @@ const HomePage = () => {
           <div className="absolute top-0 right-0 w-48 h-48 bg-ios-blue/10 rounded-full blur-[80px] -mr-16 -mt-16" />
           <div className="relative z-10">
             <header className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-black text-ios-secondary uppercase tracking-[0.3em]">Remaining Balance</span>
+              <span className="text-[11px] font-black text-ios-secondary uppercase tracking-[0.3em]">日度可用金额</span>
               <div className="w-2 h-2 rounded-full bg-[#34c759] animate-pulse" />
             </header>
             <div className="flex items-baseline gap-1">
-              <span className={`text-7xl font-bold tracking-tighter transition-colors duration-500 ${dailyBudget < 0 ? 'text-[#ff3b30]' : 'text-ios-primary'}`}>
-                {dailyBudget < 0 ? '-' : ''}¥{Math.abs(dailyBudget)}
+              <span className={`text-7xl font-bold tracking-tighter transition-colors duration-500 ${dailyAvailable < 0 ? 'text-[#ff3b30]' : 'text-ios-primary'}`}>
+                {dailyAvailable < 0 ? '-' : ''}¥{Math.abs(dailyAvailable).toFixed(0)}
               </span>
             </div>
-            {dailyBudget < 0 && (
-              <p className="text-[12px] font-bold text-[#ff3b30]/70 mt-1 uppercase tracking-widest">Over Budget</p>
+            {dailyAvailable < 0 && (
+              <p className="text-[12px] font-bold text-[#ff3b30]/70 mt-1 uppercase tracking-widest">超支</p>
             )}
+
+            <div className="mt-3 space-y-1 opacity-45">
+              <div className="text-[10px] font-black tracking-[0.15em] text-ios-primary">
+                本周期剩余 {remainingDays} 天
+              </div>
+              <div className="text-[10px] font-bold text-ios-secondary leading-snug">
+                今日可用 = 今日额度 ¥{Number(dailyAllowanceSnapshot || 0).toFixed(0)} − 今日已花 ¥{Number(todayExpenses || 0).toFixed(0)}
+              </div>
+            </div>
             
             <div className="mt-10 grid grid-cols-2 gap-4">
               <div className="bg-ios-primary/5 backdrop-blur-md p-5 rounded-[28px] border border-ios-border">
                 <div className="flex items-center gap-2 mb-1.5 opacity-30">
-                  <TrendingUp size={14} className="text-ios-primary" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-ios-primary">Spent</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-ios-primary">月度可用金额</span>
                 </div>
-                <span className="text-xl font-bold text-ios-primary/70">¥{totalExpenses.toFixed(0)}</span>
+                <span className={`text-xl font-bold ${monthlyAvailable < 0 ? 'text-[#ff3b30]/80' : 'text-ios-primary/70'}`}>
+                  {monthlyAvailable < 0 ? '-' : ''}¥{Math.abs(monthlyAvailable).toFixed(0)}
+                </span>
               </div>
               <div className="bg-ios-primary/5 backdrop-blur-md p-5 rounded-[28px] border border-ios-border">
                 <div className="flex items-center gap-2 mb-1.5 opacity-30">
-                  <Calendar size={14} className="text-ios-primary" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-ios-primary">Period</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-ios-primary">周期日均额度</span>
                 </div>
-                <span className="text-xl font-bold text-ios-primary/70">{remainingDays}d</span>
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className={`text-xl font-bold ${cycleDailyAllowance < 0 ? 'text-[#ff3b30]/80' : 'text-ios-primary/70'}`}>
+                    {cycleDailyAllowance < 0 ? '-' : ''}¥{Math.abs(cycleDailyAllowance).toFixed(0)}
+                  </span>
+                  <span
+                    className={`text-xs font-black ${
+                      cycleDailyDelta < 0 ? 'text-[#ff3b30]' : cycleDailyDelta > 0 ? 'text-[#34c759]' : 'text-ios-secondary'
+                    }`}
+                  >
+                    {cycleDailyDelta > 0 ? '+' : ''}{cycleDailyDelta.toFixed(0)}
+                  </span>
+                </div>
+                <div className="mt-1 text-[10px] font-bold text-ios-secondary/70">
+                  基准 ¥{Number(baselineDailyAllowance || 0).toFixed(0)} / 天
+                </div>
               </div>
             </div>
           </div>

@@ -1,14 +1,13 @@
 import React, { useMemo } from 'react'
 import { SafeArea } from 'antd-mobile'
 import { useApp } from '../context/AppContext'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart as RePieChart, Pie } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell, PieChart as RePieChart, Pie } from 'recharts'
 import dayjs from 'dayjs'
 import { BarChart3, PieChart, Activity, Target } from 'lucide-react'
-import { getCurrentMonth } from '../utils/date'
+import MeasuredChart from '../components/MeasuredChart'
 
 const StatsPage = () => {
   const { transactions, recentTransactions, loading, totalExpenses } = useApp()
-  const currentMonthStr = getCurrentMonth()
 
   const dailyStats = useMemo(() => {
     const last7Days = Array.from({ length: 7 }, (_, i) => {
@@ -32,7 +31,8 @@ const StatsPage = () => {
   }, [recentTransactions])
 
   const categoryStats = useMemo(() => {
-    const monthlyTrans = transactions.filter(t => t.type === 'expense' && t.date.startsWith(currentMonthStr))
+    // transactions 在 AppContext 里已按“周期”拉取，这里无需再按 YYYY-MM 过滤
+    const monthlyTrans = transactions.filter(t => t.type === 'expense')
     const stats = monthlyTrans.reduce((acc, t) => {
       acc[t.category] = (acc[t.category] || 0) + Number(t.amount)
       return acc
@@ -47,7 +47,7 @@ const StatsPage = () => {
         percent: total > 0 ? ((value / total) * 100).toFixed(1) : 0 
       }))
       .sort((a, b) => b.value - a.value)
-  }, [transactions, currentMonthStr])
+  }, [transactions])
 
   const COLORS = ['#007aff', '#34c759', '#af52de', '#ff9500', '#ff3b30', '#5856d6', '#ff2d55']
 
@@ -81,9 +81,9 @@ const StatsPage = () => {
             <span className="text-[10px] font-black text-ios-secondary uppercase tracking-widest">7 Day Pulse</span>
           </header>
           
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={dailyStats}>
+          <MeasuredChart className="h-64 w-full min-w-0">
+            {({ width, height }) => (
+              <BarChart width={width} height={height} data={dailyStats}>
                 <CartesianGrid vertical={false} strokeOpacity={0.1} stroke="var(--text-primary)" />
                 <XAxis 
                   dataKey="name" 
@@ -114,8 +114,8 @@ const StatsPage = () => {
                   ))}
                 </Bar>
               </BarChart>
-            </ResponsiveContainer>
-          </div>
+            )}
+          </MeasuredChart>
         </div>
 
         {/* Monthly Percentage Allocation */}
@@ -129,9 +129,10 @@ const StatsPage = () => {
             </header>
 
             <div className="flex flex-col items-center">
-              <div className="h-64 w-full relative">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RePieChart>
+              <div className="h-64 w-full relative min-w-0">
+                <MeasuredChart className="absolute inset-0">
+                  {({ width, height }) => (
+                    <RePieChart width={width} height={height}>
                     <Pie
                       data={categoryStats}
                       innerRadius={70}
@@ -156,8 +157,9 @@ const StatsPage = () => {
                         return null
                       }}
                     />
-                  </RePieChart>
-                </ResponsiveContainer>
+                    </RePieChart>
+                  )}
+                </MeasuredChart>
                 {/* Center Text */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                   <span className="text-[10px] font-black text-ios-secondary uppercase tracking-widest">Total Spent</span>

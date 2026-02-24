@@ -9,4 +9,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-export const supabase = createClient(supabaseUrl || "", supabaseAnonKey || "");
+export const supabase = createClient(supabaseUrl || "", supabaseAnonKey || "", {
+  auth: {
+    persistSession: true, // 默认就是 true，这里显式写出来，保证“登录一次下次免登录”
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
+});
