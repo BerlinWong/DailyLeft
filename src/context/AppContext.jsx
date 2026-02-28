@@ -14,6 +14,7 @@ export const AppProvider = ({ children }) => {
   const [recentTransactions, setRecentTransactions] = useState([])
   const [monthlySettings, setMonthlySettings] = useState({ income: 0, savings_goal: 0 })
   const [loading, setLoading] = useState(true)
+  const [initializing, setInitializing] = useState(true) // 专门用于初次启动的阻塞
   // 用一个“日戳”来保证跨 0 点会触发一次刷新/重算（不需要时时刷新）
   const [dayStamp, setDayStamp] = useState(dayjs().format('YYYY-MM-DD'))
 
@@ -126,6 +127,7 @@ export const AppProvider = ({ children }) => {
       console.error('Error fetching data:', error)
     } finally {
       setLoading(false)
+      setInitializing(false) // 只要完成一次请求，就代表初始化完成
     }
   }, [user, cycleKey, cycleStartISO, nextCycleStartISO])
 
@@ -243,8 +245,9 @@ export const AppProvider = ({ children }) => {
       cycleDailyDelta,
       cycleStartDay,
       loading,
+      initializing, // 暴露给页面，用于更精准的白屏/骨架屏控制
       signOut,
-      refresh: fetchData 
+      refresh: fetchData
     }}>
       {children}
     </AppContext.Provider>

@@ -22,6 +22,7 @@ const HomePage = () => {
     remainingDays,
     dailyAllowanceSnapshot,
     todayExpenses,
+    initializing,
   } = useApp()
   const { lang } = useLang()
   const [inputText, setInputText] = useState('')
@@ -124,7 +125,7 @@ const HomePage = () => {
     })
   }
 
-  if (loading && transactions.length === 0) return (
+  if ((loading || initializing) && transactions.length === 0) return (
     <div className="min-h-screen p-8 space-y-8 animate-pulse">
       <div className="h-10 w-48 bg-ios-primary/5 rounded-full" />
       <div className="h-64 bg-ios-primary/5 rounded-[32px]" />
@@ -136,7 +137,7 @@ const HomePage = () => {
     <div className="min-h-screen pb-40 animate-fluid">
       <SafeArea position='top' />
       
-      <header className="px-8 pt-12 flex items-center justify-between">
+      <header className="px-8 pt-6 flex items-center justify-between">
         <div>
           <h1 className="text-4xl font-bold tracking-tight text-ios-primary">{t(lang,'today')}</h1>
           <p className="text-ios-secondary text-sm font-semibold mt-1 uppercase tracking-widest">

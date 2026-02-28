@@ -66,7 +66,7 @@ const StatsPage = () => {
     <div className="min-h-screen pb-40 animate-fluid">
       <SafeArea position='top' />
       
-      <header className="px-8 pt-12 mb-10">
+      <header className="px-8 pt-6 mb-10">
         <h1 className="text-4xl font-bold tracking-tight text-ios-primary">{t(lang,'analytics')}</h1>
         <p className="text-ios-secondary text-sm font-semibold mt-1 uppercase tracking-widest flex items-center gap-2">
           <Activity size={14} className="text-[#34c759]" /> {t(lang,'performance_overview') || 'Performance overview'}

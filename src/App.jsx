@@ -10,6 +10,7 @@ import HomePage from './pages/HomePage'
 import StatsPage from './pages/StatsPage'
 import SettingsPage from './pages/SettingsPage'
 import AuthPage from './pages/AuthPage'
+import ScrollToTop from './components/ScrollToTop'
 import './index.css'
 
 function App() {
@@ -19,7 +20,8 @@ function App() {
         {/* language context wraps the whole app */}
         <LangProvider>
           <BrowserRouter>
-          <Routes>
+            <ScrollToTop />
+            <Routes>
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/" element={<RequireAuth><Layout /></RequireAuth>}>
               <Route index element={<HomePage />} />
