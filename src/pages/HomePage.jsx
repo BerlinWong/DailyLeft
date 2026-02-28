@@ -64,7 +64,7 @@ const HomePage = () => {
         title: <span className="text-ios-primary font-bold">Commit Transaction?</span>,
         content: (
           <div className="py-4">
-             <div className="liquid-glass p-6 rounded-[28px] shadow-2xl relative overflow-hidden">
+             <div className="liquid-glass p-6 rounded-[32px] shadow-2xl relative overflow-hidden">
               <div className="absolute top-0 right-0 w-24 h-24 bg-ios-blue/10 rounded-full blur-2xl -mr-8 -mt-8" />
               <div className="flex flex-col gap-1 relative z-10">
                 <span className="text-[10px] font-bold text-ios-secondary uppercase tracking-[0.2em]">Validated Amount</span>
@@ -128,7 +128,7 @@ const HomePage = () => {
     <div className="min-h-screen p-8 space-y-8 animate-pulse">
       <div className="h-10 w-48 bg-ios-primary/5 rounded-full" />
       <div className="h-64 bg-ios-primary/5 rounded-[32px]" />
-      <div className="h-20 bg-ios-primary/5 rounded-[28px]" />
+      <div className="h-20 bg-ios-primary/5 rounded-[24px]" />
     </div>
   )
 
@@ -150,10 +150,10 @@ const HomePage = () => {
 
       {/* Hero Liquid Card */}
       <section className="px-6 mt-10">
-        <div className="liquid-glass rounded-[40px] p-8 relative overflow-hidden">
+        <div className="liquid-glass rounded-[32px] p-8 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-48 h-48 bg-ios-blue/10 rounded-full blur-[80px] -mr-16 -mt-16" />
           <div className="relative z-10">
-            <header className="flex items-center justify-between mb-2">
+            <header className="flex items-center justify-between mb-2 ">
               <span className="text-[11px] font-black text-ios-secondary uppercase tracking-[0.3em]">日度可用金额</span>
               <div className="w-2 h-2 rounded-full bg-[#34c759] animate-pulse" />
             </header>
@@ -176,7 +176,7 @@ const HomePage = () => {
             </div>
             
             <div className="mt-10 grid grid-cols-2 gap-4">
-              <div className="bg-ios-primary/5 backdrop-blur-md p-5 rounded-[28px] border border-ios-border">
+              <div className="bg-ios-primary/5 backdrop-blur-md p-5 rounded-[24px] border border-ios-border">
                 <div className="flex items-center gap-2 mb-1.5 opacity-30">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-ios-primary">月度可用金额</span>
                 </div>
@@ -184,7 +184,7 @@ const HomePage = () => {
                   {monthlyAvailable < 0 ? '-' : ''}¥{Math.abs(monthlyAvailable).toFixed(0)}
                 </span>
               </div>
-              <div className="bg-ios-primary/5 backdrop-blur-md p-5 rounded-[28px] border border-ios-border">
+              <div className="bg-ios-primary/5 backdrop-blur-md p-5 rounded-[24px] border border-ios-border">
                 <div className="flex items-center gap-2 mb-1.5 opacity-30">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-ios-primary">周期日均额度</span>
                 </div>
